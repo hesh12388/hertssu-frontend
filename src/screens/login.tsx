@@ -1,18 +1,101 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
+import { useAuth } from '@/App';
+import { loginWithMicrosoft } from '../utils/msAuth';
+
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const auth = useAuth();
+
+  const handleLogin = async () => {
+    if(!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try{
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        await auth?.login(data.token, data.refreshToken);
+      }
+      else{
+        Alert.alert('Login Failed', data.message || 'An error occurred');
+      }
+    }
+    catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Login Failed', 'An unexpected error occurred');
+    }
+    finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleOAuth = async () => {
+    setIsLoading(true);
+    try {
+      // Get Microsoft tokens
+      const microsoftTokens = await loginWithMicrosoft();
+      
+      if (!microsoftTokens) {
+        Alert.alert('Login Failed', 'Microsoft authentication was cancelled or failed');
+        return;
+      }
+
+      // Send Microsoft tokens to your backend
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/oauth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: microsoftTokens.idToken,
+          access_token: microsoftTokens.accessToken,
+          refresh_token: microsoftTokens.refreshToken,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Same as email/password flow - login with your JWT tokens
+        await auth?.login(data.token, data.refreshToken);
+      } else {
+        Alert.alert('Login Failed', data.message || 'An error occurred');
+      }
+    } catch (error) {
+      console.error('OAuth login error:', error);
+      Alert.alert('Login Failed', 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -43,19 +126,31 @@ const Login = () => {
               placeholder="Email Address"
               autoCapitalize="none"
               keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              editable={!isLoading}
+              placeholderTextColor="#999"
             />
             <Text style={styles.inputLabel}>Password</Text>
             <TextInput
               style={styles.input}
               placeholder="Password"
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              editable={!isLoading}
+              placeholderTextColor="#999"
             />
 
             <Text style={styles.forgotPassword}>Forgot password?</Text>
 
-            <Pressable style={styles.button}>
-              <Text style={styles.loginButtonText}>Log In</Text>
-            </Pressable>
+            <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled]} onPress={handleLogin} disabled={isLoading}>
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.loginButtonText}>Log In</Text>
+              )}
+            </TouchableOpacity>
           </View>
 
        
@@ -66,10 +161,10 @@ const Login = () => {
           </View>
 
         
-          <Pressable style={styles.authButton}>
+          <TouchableOpacity style={styles.authButton} onPress={handleOAuth}>
             <Image source={require('../../assets/images/outlook_icon.png')} style={styles.authLogo} />
-            <Text style={styles.buttonText}>Continue with Outlook</Text>
-          </Pressable>
+                <Text style={styles.buttonText}>Continue with Outlook</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -145,6 +240,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 60,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   authButton: {
     width: '100%',

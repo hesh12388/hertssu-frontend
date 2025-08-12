@@ -1,39 +1,158 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import AppNavigator from './src/navigation/AppNavigator';
-import AuthNavigator from './src/navigation/AuthNavigator';
-
+import { NavigationContainer } from "@react-navigation/native";
+import { AxiosInstance } from "axios";
+import * as SecureStore from "expo-secure-store";
+import { jwtDecode } from "jwt-decode";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import AppNavigator from "./src/navigation/AppNavigator";
+import AuthNavigator from "./src/navigation/AuthNavigator";
+import { createApi } from "./src/utils/api";
+import { loginWithMicrosoft } from "./src/utils/msAuth";
 
 interface AuthContextType {
-  userToken: string | null;
-  login: (token: string) => Promise<void>;
+  userToken: string | null; // access token (in-memory only)
+  user: User | null;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
+  api: AxiosInstance;
+}
+
+export interface User {
+  name: string;
+  email: string;
+  role: string;
+  committeeId: number | null;
+  subcommitteeId: number | null;
 }
 
 // Create a auth context to be used in any other screen
 const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => useContext(AuthContext);
+const REFRESH_KEY = "refreshToken";
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [userToken, setUserToken] = useState<string | null>(null); 
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const api = React.useMemo(
+    () => createApi(getAccessToken, refreshTokens, hardLogout),
+    []
+  );
 
-  // Check if user is logged in on load by retrieving stored token
+  const decodeToken = (token: string) => {
+    try {
+      const d: any = jwtDecode(token);
+      setUser({
+        name: d.name || "",
+        email: d.email || "",
+        role: d.role || "",
+        committeeId: d.committeeId ?? null,
+        subcommitteeId: d.subcommitteeId ?? null,
+      });
+    } catch {
+      setUser(null);
+    }
+  };
+
+
+  const refreshTokens = async (error: any): Promise<string> => {
+    try {
+      // Check what type of error it is
+      if (error?.response?.data?.error === 'MICROSOFT_REAUTH_REQUIRED')  {
+        // Microsoft tokens expired - do Microsoft reauth
+        const microsoftTokens = await loginWithMicrosoft();
+        
+        if (!microsoftTokens) {
+          throw new Error('Microsoft login failed');
+        }
+        
+        // Send Microsoft tokens to backend and get new JWT
+        const authResponse = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/microsoft`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_token: microsoftTokens.idToken,
+            access_token: microsoftTokens.accessToken,
+            refresh_token: microsoftTokens.refreshToken,
+          }),
+        });
+        
+        const authData = await authResponse.json();
+        if (authResponse.ok) {
+          setUserToken(authData.accessToken);
+          decodeToken(authData.accessToken);
+          await SecureStore.setItemAsync(REFRESH_KEY, authData.refreshToken);
+          return authData.accessToken;
+        }
+        
+        throw new Error('Microsoft reauth failed');
+      }
+      else{
+          const rt = await SecureStore.getItemAsync(REFRESH_KEY);
+          if (!rt) throw new Error("No refresh token");
+          const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: rt}),
+          });
+          
+          if (!response.ok) {
+            await SecureStore.deleteItemAsync(REFRESH_KEY);
+            throw new Error("Refresh failed");
+          }
+
+          const data = await response.json();
+          setUserToken(data.accessToken);
+          decodeToken(data.accessToken);
+          await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
+          return data.accessToken;
+      }
+      
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const hardLogout = async () => {
+    await SecureStore.deleteItemAsync(REFRESH_KEY);
+    setUserToken(null);
+    setUser(null);
+  };
+
+  const getAccessToken = () => userToken;
+
+
+
+  // try silent refresh using refreshToken from SecureStore on app start
   useEffect(() => {
-    const checkToken = async () => {
+    const restoreSession = async () => {
       try {
-        const token = await AsyncStorage.getItem('userToken');
-        setUserToken(token);
+        const rt = await SecureStore.getItemAsync(REFRESH_KEY);
+        if (!rt) return;
+
+        const res = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: rt }),
+        });
+
+        if (!res.ok) {
+          await SecureStore.deleteItemAsync(REFRESH_KEY);
+          return;
+        }
+
+        const data = await res.json();
+        setUserToken(data.accessToken);
+        decodeToken(data.accessToken);
+        await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
       } catch (e) {
-        console.error('Failed to load token');
+
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkToken();
+    restoreSession();
   }, []);
 
   // Show loading spinner during token check
@@ -46,17 +165,18 @@ const App = () => {
   }
 
   // context value includes token, and login/logout functions
-  const authContextValue: AuthContextType= {
+  const authContextValue: AuthContextType = {
     userToken,
-    login: async (token: string) => {
-      await AsyncStorage.setItem('userToken', token);
-      setUserToken(token);
+    user,
+    login: async (accessToken: string, refreshToken: string) => {
+      setUserToken(accessToken);
+      decodeToken(accessToken);
+      await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
     },
-    logout: async () => {
-      await AsyncStorage.removeItem('userToken');
-      setUserToken(null);
-    },
+    logout: hardLogout,
+    api
   };
+
 
   return (
     <AuthContext.Provider value={authContextValue}>
