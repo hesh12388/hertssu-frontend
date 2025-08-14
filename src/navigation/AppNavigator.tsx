@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
 import Home from '../screens/Home';
 import Interview from '../screens/Interview';
-
+import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
 const Drawer = createDrawerNavigator();
 
 const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any }) => {
@@ -112,6 +112,7 @@ const AppNavigator = () => {
     >
       <Drawer.Screen name="Home" component={Home} />
       <Drawer.Screen name="Interviews" component={Interview}/>
+      <Drawer.Screen name="Meetings" component={UpcomingMeetings}/>
     </Drawer.Navigator>
   );
 };

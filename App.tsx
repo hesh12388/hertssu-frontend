@@ -34,10 +34,6 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const api = React.useMemo(
-    () => createApi(getAccessToken, refreshTokens, hardLogout),
-    []
-  );
 
   const decodeToken = (token: string) => {
     try {
@@ -122,7 +118,10 @@ const App = () => {
   const getAccessToken = () => userToken;
 
 
-
+  const api = React.useMemo(
+      () => createApi(getAccessToken, refreshTokens, hardLogout),
+      [getAccessToken, refreshTokens, hardLogout]
+    );
   // try silent refresh using refreshToken from SecureStore on app start
   useEffect(() => {
     const restoreSession = async () => {
