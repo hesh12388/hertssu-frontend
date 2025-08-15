@@ -6,7 +6,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
 import Home from '../screens/Home';
-import Interview from '../screens/Interview';
+import Interview from '../screens/Interviews/Interview';
 
 const Drawer = createDrawerNavigator();
 

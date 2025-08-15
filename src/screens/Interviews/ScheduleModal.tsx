@@ -132,9 +132,7 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                 console.log('Closing modal after scheduling');
                 setTimeout(() => {
                     setShowStatus(false);
-                    if (isSuccess){
-                        handleCloseModal();
-                    }
+                    handleCloseModal();
                 }, 3000);
             }
         };

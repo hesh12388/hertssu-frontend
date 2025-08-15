@@ -10,7 +10,7 @@ import { createApi } from "./src/utils/api";
 import { loginWithMicrosoft } from "./src/utils/msAuth";
 
 interface AuthContextType {
-  userToken: string | null; // access token (in-memory only)
+  userToken: string | null;
   user: User | null;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -34,11 +34,8 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const api = React.useMemo(
-    () => createApi(getAccessToken, refreshTokens, hardLogout),
-    []
-  );
 
+  
   const decodeToken = (token: string) => {
     try {
       const d: any = jwtDecode(token);
@@ -121,7 +118,10 @@ const App = () => {
 
   const getAccessToken = () => userToken;
 
-
+  const api = React.useMemo(
+    () => createApi(getAccessToken, refreshTokens, hardLogout),
+    [getAccessToken, refreshTokens, hardLogout]
+  );
 
   // try silent refresh using refreshToken from SecureStore on app start
   useEffect(() => {
@@ -171,6 +171,7 @@ const App = () => {
     login: async (accessToken: string, refreshToken: string) => {
       setUserToken(accessToken);
       decodeToken(accessToken);
+      console.log(refreshToken);
       await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
     },
     logout: hardLogout,

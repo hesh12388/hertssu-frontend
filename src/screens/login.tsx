@@ -161,7 +161,7 @@ const Login = () => {
           </View>
 
         
-          <TouchableOpacity style={styles.authButton} onPress={handleOAuth}>
+          <TouchableOpacity style={styles.authButton} onPress={handleOAuth} disabled={isLoading}>
             <Image source={require('../../assets/images/outlook_icon.png')} style={styles.authLogo} />
                 <Text style={styles.buttonText}>Continue with Outlook</Text>
           </TouchableOpacity>
