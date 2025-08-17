@@ -77,10 +77,6 @@ const App = () => {
   const getAccessToken = () => userToken;
 
   const api = React.useMemo(
-    () => createApi(getAccessToken, refreshTokens, hardLogout),
-    [getAccessToken, refreshTokens, hardLogout]
-  );
-  const api = React.useMemo(
       () => createApi(getAccessToken, refreshTokens, hardLogout),
       [getAccessToken, refreshTokens, hardLogout]
     );
