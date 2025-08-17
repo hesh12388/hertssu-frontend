@@ -8,6 +8,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import Users from '../screens/Admin/Users';
 import Home from '../screens/Home';
 import Interview from '../screens/Interviews/Interview';
+import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
 import Proposals from '../screens/Proposals/Proposals';
 import Tasks from '../screens/Tasks/Tasks';
 const Drawer = createDrawerNavigator();
@@ -117,6 +118,7 @@ const AppNavigator = () => {
     >
       <Drawer.Screen name="Home" component={Home} />
       <Drawer.Screen name="Interviews" component={Interview}/>
+      <Drawer.Screen name="Meetings" component={UpcomingMeetings}/>
       <Drawer.Screen name="Tasks" component={Tasks}/>
       <Drawer.Screen name="Proposals" component={Proposals}/>
       <Drawer.Screen name="Admin" component={Users} />
