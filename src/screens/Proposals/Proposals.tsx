@@ -393,6 +393,9 @@ const Proposals = () => {
                         );
                     }
                 }}
+                onDelete={(proposalId: number) => {
+                    setAssignedProposals(prev => prev.filter(proposal => proposal.id !== proposalId));
+                }}
             />
 
             <CrossCommitteeRequestDetailsModal 

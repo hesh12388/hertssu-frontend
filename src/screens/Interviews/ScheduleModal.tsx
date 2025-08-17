@@ -8,7 +8,7 @@ import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
 import { InterviewType } from '../../types/Interview';
-const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COMMITTEES: Record<string, string[]>, POSITIONS: string[], onClose: () => void, onUpdate: (interview: InterviewType) => void, visible: boolean}) => {
+const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COMMITTEES: Record<string, string[]>, POSITIONS: { label: string; value: string; }[], onClose: () => void, onUpdate: (interview: InterviewType) => void, visible: boolean}) => {
     const { api }: { api: AxiosInstance } = useAuth()!;
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
     const [formData, setFormData] = useState({
@@ -233,10 +233,7 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                                     onValueChange={(value) => {
                                         updateFormData('position', value);
                                     }}
-                                    items={POSITIONS.map(pos => ({
-                                        label: pos,
-                                        value: pos
-                                    }))}
+                                    items={POSITIONS}
                                     value={formData.position}
                                     placeholder={{ label: "Select position...", value: "" }}
                                     Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}

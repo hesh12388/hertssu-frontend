@@ -15,7 +15,6 @@ export function createApi(
   api.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
             const token = getAccessToken();
-            console.log(token);
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }

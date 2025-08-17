@@ -17,12 +17,14 @@ const ProposalDetailsModal = ({
     visible,
     selectedProposal,
     onClose,
-    onUpdate
+    onUpdate,
+    onDelete
 }: {
     selectedProposal: ProposalType | null;
     visible: boolean;
     onClose: () => void;
     onUpdate: (proposal: ProposalType) => void;
+    onDelete: (proposalId: number) => void;
 }) => {
     const [editData, setEditData] = useState<ProposalType | null>(null);
     const [activeTab, setActiveTab] = useState<'proposal' | 'crossCommittee'>('proposal');
@@ -160,6 +162,14 @@ const ProposalDetailsModal = ({
                 const updatedProposal: ProposalType = response.data;
                 setEditData(updatedProposal);
                 onUpdate(updatedProposal);
+                 
+                setCrossCommitteeRequests(prev => 
+                    prev.map(request => ({
+                        ...request,
+                        status: newStatus as 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED'
+                    }))
+                );
+                
             } else {
                 setIsLoading(false);
                 setIsSuccess(false);
@@ -309,6 +319,57 @@ const ProposalDetailsModal = ({
             ]
         );
     };
+    const handleDeleteProposal = async () => {
+        if (!editData) return;
+
+        try {
+            setIsLoading(true);
+            setStatusMessage("Deleting proposal...");
+            setShowStatus(true);
+
+            const response = await api.delete(`/proposals/${editData.id}`);
+
+            if (response.status === 204 || response.status === 200) {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("Proposal deleted successfully!");
+                
+                // Close the modal after successful deletion
+                setTimeout(() => {
+                    setShowStatus(false);
+                    onClose();
+                    onDelete(editData.id);
+                }, 2000);
+            } else {
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error deleting proposal");
+            }
+
+        } catch (error) {
+            console.error('Error deleting proposal:', error);
+            setIsLoading(false);
+            setIsSuccess(false);
+            setResultMessage("Error deleting proposal, please try again");
+        } finally {
+            if (!isSuccess) {
+                setTimeout(() => {
+                    setShowStatus(false);
+                }, 3000);
+            }
+        }
+    };
+
+const confirmDeleteProposal = () => {
+    Alert.alert(
+        "Delete Proposal",
+        `Are you sure you want to delete "${editData?.title}"? This action cannot be undone.`,
+        [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: handleDeleteProposal }
+        ]
+    );
+};
 
     const handleCreateCrossCommitteeRequest = () => {
         setIsCreateCrossCommitteeModalVisible(true);
@@ -337,7 +398,7 @@ const ProposalDetailsModal = ({
     const canComment = editData.status !== 'COMPLETED' && (isAssigner || isAssignee);
     const canRequestApproval = isAssignee && editData.status === 'IN_PROGRESS';
     const canApproveReject = isAssigner && editData.status === 'PENDING_REVIEW';
-    const canCreateCrossCommitteeRequest = isAssignee && editData.status !== 'COMPLETED';
+    const canCreateCrossCommitteeRequest = isAssignee && editData.status === 'IN_PROGRESS';
 
     return (
         <Modal
@@ -668,6 +729,17 @@ const ProposalDetailsModal = ({
                                         </View>
                                     ))}
                                 </View>
+                                
+                                {/* Delete Button */}
+                                {canEdit && (
+                                    <TouchableOpacity 
+                                        style={styles.deleteButton}
+                                        onPress={confirmDeleteProposal}
+                                        disabled={showStatus}
+                                    >
+                                        <Text style={styles.deleteButtonText}>Delete Proposal</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {/* Save Button */}
                                 {canEdit && (
@@ -1104,6 +1176,22 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    deleteButtonText: {
+        color: '#E9435E',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    deleteButton: {
+        width: '100%',
+        backgroundColor: 'white',
+        borderColor: '#E9435E',
+        borderWidth: 1,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 50,
+        marginTop: 20,
     },
     emptySection: {
         alignItems: 'center',
