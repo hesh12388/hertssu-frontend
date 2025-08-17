@@ -76,8 +76,6 @@ const Login = () => {
         },
         body: JSON.stringify({
           id_token: microsoftTokens.idToken,
-          access_token: microsoftTokens.accessToken,
-          refresh_token: microsoftTokens.refreshToken,
         }),
       });
 

@@ -15,6 +15,7 @@ export function createApi(
   api.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
             const token = getAccessToken();
+            console.log(token);
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -31,7 +32,7 @@ export function createApi(
     async (error) => {
         const status = error?.response?.status;
         const original = error?.config || {};
-        
+      
         if (status === 401 && !original._retry) {
             original._retry = true;
 

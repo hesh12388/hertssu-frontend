@@ -6,22 +6,14 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AuthNavigator from "./src/navigation/AuthNavigator";
+import { User } from "./src/types/User";
 import { createApi } from "./src/utils/api";
-
 interface AuthContextType {
   userToken: string | null;
   user: User | null;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   api: AxiosInstance;
-}
-
-export interface User {
-  name: string;
-  email: string;
-  role: string;
-  committeeId: number | null;
-  subcommitteeId: number | null;
 }
 
 // Create a auth context to be used in any other screen
@@ -38,6 +30,7 @@ const App = () => {
   const decodeToken = (token: string) => {
     try {
       const d: any = jwtDecode(token);
+      console.log(d);
       setUser({
         name: d.name || "",
         email: d.email || "",
@@ -137,7 +130,6 @@ const App = () => {
     login: async (accessToken: string, refreshToken: string) => {
       setUserToken(accessToken);
       decodeToken(accessToken);
-      console.log(refreshToken);
       await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
     },
     logout: hardLogout,
