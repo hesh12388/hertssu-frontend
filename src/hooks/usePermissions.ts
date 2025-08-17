@@ -16,7 +16,6 @@ export function usePermissions(user: User | null) {
     const isLeaderLevel = isLeader || isAssociateLeader;
     const isHigherLevel = isFromCommittee(2) || isOfficer;
     
-    const canSeeWarnings = !isMember;
     const canSeeTeam = !isMember;
     const canSeeInterviews = isFromCommittee(1);
     const canSeeProposals = isFromCommittee(3) || isFromCommittee(4) || isFromCommittee(5) || isHigherLevel;
@@ -37,7 +36,6 @@ export function usePermissions(user: User | null) {
         
         isMember,
         isFromCommittee,
-        canSeeWarnings,
         canSeeTeam,
         canSeeInterviews,
         canSeeProposals,

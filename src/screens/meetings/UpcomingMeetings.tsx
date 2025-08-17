@@ -364,7 +364,7 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
             text: "Whole series",
             style: "destructive",
             onPress: () => {
-              deleteMeeting(auth?.api, item.meetingId, {
+              deleteMeeting(auth!.api, item.meetingId, {
                 series: true,
                 recurrenceId: item.meetingId.toString()
               })
@@ -375,7 +375,7 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
           {
             text: "This occurrence",
             onPress: () => {
-              deleteMeeting(auth?.api, item.meetingId)
+              deleteMeeting(auth!.api, item.meetingId)
                 .then(() => refetch())
                 .catch((e) => console.error("Delete failed", e));
             },
@@ -389,7 +389,7 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            deleteMeeting(auth?.api, item.meetingId)
+            deleteMeeting(auth!.api, item.meetingId)
               .then(() => refetch())
               .catch((e) => console.error("Delete failed", e));
           },

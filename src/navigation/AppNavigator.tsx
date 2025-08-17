@@ -11,13 +11,13 @@ import Interview from '../screens/Interviews/Interview';
 import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
 import Proposals from '../screens/Proposals/Proposals';
 import Tasks from '../screens/Tasks/Tasks';
+import Warnings from '../screens/Warnings/Warnings';
 const Drawer = createDrawerNavigator();
 
 const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any }) => {
 
   const auth = useAuth();
   const {
-    canSeeWarnings,
     canSeeTeam,
     canSeeInterviews,
     canSeeProposals,
@@ -38,7 +38,7 @@ const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any
     { name: 'Tasks', icon: 'grid-outline', route: 'Tasks' },
     { name: 'Meetings', icon: 'calendar-outline', route: 'Meetings' },
     { name: 'My Progress', icon: 'bar-chart-outline', route: 'MyProgress' },
-    canSeeWarnings && { name: 'Warnings', icon: 'warning-outline', route: 'Warnings' },
+    { name: 'Warnings', icon: 'warning-outline', route: 'Warnings' },
     canSeeTeam && { name: 'Team', icon: 'accessibility-outline', route: 'Team' },
     canSeeInterviews && { name: 'Interviews', icon: 'person-outline', route: 'Interviews' },
     canSeeProposals && { name: 'Proposals', icon: 'newspaper-outline', route: 'Proposals' },
@@ -122,6 +122,7 @@ const AppNavigator = () => {
       <Drawer.Screen name="Tasks" component={Tasks}/>
       <Drawer.Screen name="Proposals" component={Proposals}/>
       <Drawer.Screen name="Admin" component={Users} />
+      <Drawer.Screen name="Warnings" component={Warnings} />
     </Drawer.Navigator>
   );
 };

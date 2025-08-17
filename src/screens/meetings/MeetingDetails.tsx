@@ -25,6 +25,7 @@ import {
 import {
   deleteMeeting,
   updateMeeting,
+  updateMeetingSeries,
 } from "../../../services/meetingServices";
 import type { CreateMeetingPayload, MeetingResponseDto } from "../../../types/meeting";
 import TimeSheet from "../../components/TimeSheet";
@@ -358,26 +359,30 @@ const deleteByOccurrence = async () => {
           },
         },
         {
-          text: "Entire series",
-          onPress: async () => {
-            try {
-              setSaving(true);
-              if (typeof meeting.recurrenceId === "string" || typeof meeting.recurrenceId === "number") {
-                const updated = await updateMeeting(api, meeting.recurrenceId, payload, { series: true });
-                primeMeetingCache(updated);
-                setMeeting(updated);
+            text: "Entire series",
+            onPress: async () => {
+              try {
+                setSaving(true);
+                await updateMeetingSeries(
+                  api,
+                  String(meeting.recurrenceId),
+                  payload
+                );
+
+                // ✅ Re-fetch because backend returns 204
+                await fetchMeetingSWRCached(api, meeting.meetingId, (m) => {
+                  setMeeting(m);
+                  setParticipants(m?.participantEmails ?? []);
+                  primeMeetingCache(m);
+                  onUpdated?.(m);
+                }, seed);
+
                 setEditing(false);
-                onUpdated?.(updated);
-              } else {
-                Alert.alert("Error", "Recurrence ID is missing or invalid.");
+              } finally {
+                setSaving(false);
               }
-            } catch (e) {
-              console.error("❌ Update series failed:", e);
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
+            },
+        }
       ]
     );
   } else {
