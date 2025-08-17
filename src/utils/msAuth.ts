@@ -1,7 +1,7 @@
 import * as AuthSession from 'expo-auth-session';
 import { authConfig } from './config';
 
-const SCOPES = ['openid', 'profile', 'email', 'offline_access', 'Calendars.ReadWrite'];
+const SCOPES = ['openid', 'profile', 'email'];
 
 export const loginWithMicrosoft = async () => {
   try {
@@ -21,6 +21,9 @@ export const loginWithMicrosoft = async () => {
       scopes: SCOPES,
       responseType: AuthSession.ResponseType.Code,
       redirectUri: redirectUri,
+      extraParams: {
+        prompt: 'select_account', 
+      }
     });
 
     //prepare the code challenge

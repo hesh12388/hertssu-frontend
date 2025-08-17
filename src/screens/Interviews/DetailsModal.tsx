@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AxiosInstance } from 'axios';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -174,6 +174,18 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
             }, 3000);
         }
     };
+
+    const handleJoinMeeting = async () => {
+        const zoomUrl = selectedInterview.joinUrl; 
+        if (!zoomUrl) {return;}
+        
+        try {
+            //try to open Zoom app
+            await Linking.openURL(zoomUrl);
+        } catch (error) {
+            console.error('Error opening Zoom:', error);
+        }
+        };
     
 
 
@@ -447,14 +459,14 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                         </View>
                     </View>
 
-                    {selectedInterview.teamsJoinUrl && (
+                    {selectedInterview.joinUrl && (
                         <View style={styles.inputGroup}>
                             <View style={styles.label}>
-                                <Text style={styles.labelText}>Teams Meeting</Text>
+                                <Text style={styles.labelText}>Zoom Meeting</Text>
                             </View>
-                            <TouchableOpacity style={styles.teamsLinkButton}>
+                            <TouchableOpacity style={styles.teamsLinkButton} onPress={handleJoinMeeting}>
                                 <Ionicons name="videocam-outline" size={20} color="#0078d4" />
-                                <Text style={styles.teamsLinkText}>Join Teams Meeting</Text>
+                                <Text style={styles.teamsLinkText}>Join Zoom Meeting</Text>
                             </TouchableOpacity>
                         </View>
                     )}

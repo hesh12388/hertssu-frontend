@@ -24,6 +24,6 @@ export interface InterviewType {
   interviewerEmail: string;
   
 
-  teamsMeetingId?: string;
-  teamsJoinUrl?: string;
+  meetingId?: string;
+  joinUrl?: string;
 }

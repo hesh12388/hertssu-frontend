@@ -6,9 +6,11 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
 import Home from '../screens/Home';
-import Interview from '../screens/Interview';
+import Interview from '../screens/Interviews/Interview';
 import ParticipantPicker from '../screens/meetings/ParticipantPicker';
 import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
+import Proposals from '../screens/Proposals/Proposals';
+import Tasks from '../screens/Tasks/Tasks';
 const Drawer = createDrawerNavigator();
 
 const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any }) => {
@@ -115,6 +117,8 @@ const AppNavigator = () => {
       <Drawer.Screen name="Interviews" component={Interview}/>
       <Drawer.Screen name="Meetings" component={UpcomingMeetings}/>
       <Drawer.Screen name="Participants" component={ParticipantPicker}/>
+      <Drawer.Screen name="Tasks" component={Tasks}/>
+      <Drawer.Screen name="Proposals" component={Proposals}/>
     </Drawer.Navigator>
   );
 };

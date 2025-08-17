@@ -6,23 +6,14 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AuthNavigator from "./src/navigation/AuthNavigator";
+import { User } from "./src/types/User";
 import { createApi } from "./src/utils/api";
-import { loginWithMicrosoft } from "./src/utils/msAuth";
-
 interface AuthContextType {
-  userToken: string | null; // access token (in-memory only)
+  userToken: string | null;
   user: User | null;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   api: AxiosInstance;
-}
-
-export interface User {
-  name: string;
-  email: string;
-  role: string;
-  committeeId: number | null;
-  subcommitteeId: number | null;
 }
 
 // Create a auth context to be used in any other screen
@@ -38,6 +29,7 @@ const App = () => {
   const decodeToken = (token: string) => {
     try {
       const d: any = jwtDecode(token);
+      console.log(d);
       setUser({
         name: d.name || "",
         email: d.email || "",
@@ -53,57 +45,24 @@ const App = () => {
 
   const refreshTokens = async (error: any): Promise<string> => {
     try {
-      // Check what type of error it is
-      if (error?.response?.data?.error === 'MICROSOFT_REAUTH_REQUIRED')  {
-        // Microsoft tokens expired - do Microsoft reauth
-        const microsoftTokens = await loginWithMicrosoft();
-        
-        if (!microsoftTokens) {
-          throw new Error('Microsoft login failed');
-        }
-        
-        // Send Microsoft tokens to backend and get new JWT
-        const authResponse = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/microsoft`, {
+        const rt = await SecureStore.getItemAsync(REFRESH_KEY);
+        if (!rt) throw new Error("No refresh token");
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id_token: microsoftTokens.idToken,
-            access_token: microsoftTokens.accessToken,
-            refresh_token: microsoftTokens.refreshToken,
-          }),
+          body: JSON.stringify({ refreshToken: rt}),
         });
         
-        const authData = await authResponse.json();
-        if (authResponse.ok) {
-          setUserToken(authData.accessToken);
-          decodeToken(authData.accessToken);
-          await SecureStore.setItemAsync(REFRESH_KEY, authData.refreshToken);
-          return authData.accessToken;
+        if (!response.ok) {
+          await SecureStore.deleteItemAsync(REFRESH_KEY);
+          throw new Error("Refresh failed");
         }
-        
-        throw new Error('Microsoft reauth failed');
-      }
-      else{
-          const rt = await SecureStore.getItemAsync(REFRESH_KEY);
-          if (!rt) throw new Error("No refresh token");
-          const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: rt}),
-          });
-          
-          if (!response.ok) {
-            await SecureStore.deleteItemAsync(REFRESH_KEY);
-            throw new Error("Refresh failed");
-          }
 
-          const data = await response.json();
-          setUserToken(data.accessToken);
-          decodeToken(data.accessToken);
-          await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
-          return data.accessToken;
-      }
-      
+        const data = await response.json();
+        setUserToken(data.accessToken);
+        decodeToken(data.accessToken);
+        await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
+        return data.accessToken;   
     } catch (error) {
       throw error;
     }
@@ -117,7 +76,10 @@ const App = () => {
 
   const getAccessToken = () => userToken;
 
-
+  const api = React.useMemo(
+    () => createApi(getAccessToken, refreshTokens, hardLogout),
+    [getAccessToken, refreshTokens, hardLogout]
+  );
   const api = React.useMemo(
       () => createApi(getAccessToken, refreshTokens, hardLogout),
       [getAccessToken, refreshTokens, hardLogout]
