@@ -14,9 +14,48 @@ export type Meeting = {
   participants?: string[];
   role?: string;
   department?: string;
+  joinUrl?: string;
 };
 
-export type CreateMeetingPayload = Omit<
-  Meeting,
-  "meetingId" | "role" | "department"
->;
+export type ParticipantLite = {
+  id: number;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+export type CreateMeetingPayload = {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  participants: string[];
+  location: string;
+  recurrenceRule?: string;
+  isAllDay?: boolean;
+  reminders?: number[];
+  visibility?: "PUBLIC" | "PRIVATE" | "CONFIDENTIAL";
+};
+
+export type MeetingResponseDto = {
+  meetingId: number;
+  title: string;
+  description: string | null;
+  location: string | null;
+  date: string;                // ISO date string
+  startTime: string | null;    // "HH:mm:ss" or null
+  endTime: string | null;
+  isAllDay: boolean;
+  participantEmails: string[];
+  recurrenceRule?: string | null;
+  recurrenceId?: string | null;
+  recurrenceUntil?: string | null;
+  reminders: number[];
+  meetingStatus?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  zoomMeetingId?: string | null;
+  joinUrl?: string | null;
+  participants: ParticipantLite[];
+};
