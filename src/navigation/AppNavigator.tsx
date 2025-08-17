@@ -5,6 +5,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
+import Users from '../screens/Admin/Users';
 import Home from '../screens/Home';
 import Interview from '../screens/Interviews/Interview';
 import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
@@ -20,6 +21,7 @@ const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any
     canSeeTeam,
     canSeeInterviews,
     canSeeProposals,
+    isHigherLevel
   } = usePermissions(auth?.user || null);
   const currentRoute = state?.routeNames[state.index] || 'Home';
 
@@ -40,6 +42,8 @@ const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any
     canSeeTeam && { name: 'Team', icon: 'accessibility-outline', route: 'Team' },
     canSeeInterviews && { name: 'Interviews', icon: 'person-outline', route: 'Interviews' },
     canSeeProposals && { name: 'Proposals', icon: 'newspaper-outline', route: 'Proposals' },
+    isHigherLevel && { name: 'Admin', icon: 'settings-outline', route: 'Admin' },
+
   ].filter(Boolean) as MenuItem[];
 
   return (
@@ -117,6 +121,7 @@ const AppNavigator = () => {
       <Drawer.Screen name="Meetings" component={UpcomingMeetings}/>
       <Drawer.Screen name="Tasks" component={Tasks}/>
       <Drawer.Screen name="Proposals" component={Proposals}/>
+      <Drawer.Screen name="Admin" component={Users} />
     </Drawer.Navigator>
   );
 };

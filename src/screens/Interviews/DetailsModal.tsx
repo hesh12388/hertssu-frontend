@@ -9,7 +9,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusMessage } from '../../components/StatusMessage';
 import { InterviewType } from '../../types/Interview';
-const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES, POSITIONS } : {selectedInterview: InterviewType | null, visible: boolean, onClose: () => void, onUpdate: (interview: InterviewType) => void, COMMITTEES: Record<string, string[]>, POSITIONS: string[]}) => {
+const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES, POSITIONS } : {selectedInterview: InterviewType | null, visible: boolean, onClose: () => void, onUpdate: (interview: InterviewType) => void, COMMITTEES: Record<string, string[]>, POSITIONS: { label: string; value: string; }[]}) => {
 
     const [editData, setEditData] = useState<InterviewType | null>(null);
     const [isEditCalendarVisible, setIsEditCalendarVisible] = useState(false);
@@ -277,19 +277,24 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <View style={styles.label}>
-                            <Text style={styles.labelText}>Position</Text>
-                            <Text style={styles.labelRequirement}>*</Text>
+                            <View style={styles.label}>
+                                <Text style = {styles.labelText}>Position</Text>
+                                <Text style = {styles.labelRequirement}>*</Text>
+                            </View>
+                            <View style={[styles.pickerContainer, disabled && styles.pickerContainerDisabled]}>
+                                <RNPickerSelect
+                                    onValueChange={(value) => {
+                                        updateEditData('position', value)
+                                    }}
+                                    items={POSITIONS}
+                                    value={editData.position}
+                                    disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email}
+                                    placeholder={{ label: "Select position...", value: "" }}
+                                    Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}
+                                    style={pickerSelectStyles}
+                                />
+                            </View>
                         </View>
-                        <TextInput
-                            style={[styles.input, disabled && styles.pickerContainerDisabled]}
-                            value={editData.position}
-                            onChangeText={(value) => updateEditData('position', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
-                            placeholder="Enter position"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
 
                     <View style={styles.inputGroup}>
                         <View style={styles.label}>

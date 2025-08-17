@@ -159,8 +159,18 @@ const Interview = () => {
         ]
     };
 
-    const POSITIONS: string [] = ["President", "Vice President", "Executive Officer", "Chairperson", "Associate Chairperson", "Leader", "Associate Leader", "Member"]
-
+   
+    const POSITIONS = [
+        { label: 'President', value: 'PRESIDENT' },
+        { label: 'Vice President', value: 'VICE_PRESIDENT' },
+        { label: 'Executive Officer', value: 'EXECUTIVE_OFFICER' },
+        { label: 'Officer', value: 'OFFICER' },
+        { label: 'Chairperson', value: 'CHAIR_PERSON' },
+        { label: 'Associate Chairperson', value: 'ASSOCIATE_CHAIRPERSON' },
+        { label: 'Leader', value: 'LEADER' },
+        { label: 'Associate Leader', value: 'ASSOCIATE_LEADER' },
+        { label: 'Member', value: 'MEMBER' }
+    ];
 
     const handleAddInterview = () => {
         setIsModalVisible(true);

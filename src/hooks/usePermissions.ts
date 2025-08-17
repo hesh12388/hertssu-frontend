@@ -5,20 +5,20 @@ export function usePermissions(user: User | null) {
     const isFromCommittee = (committeeId: number) => user?.committeeId === committeeId;
     
 
-    const isChairperson = user?.role === 'Chairperson';
-    const isAssociateChair = user?.role === 'Associate Chairperson';
-    const isLeader = user?.role === 'Leader';
-    const isAssociateLeader = user?.role === 'Associate Leader';
-    const isOfficer = user?.role === 'Officer';
+    const isChairperson = user?.role === 'CHAIR_PERSON';
+    const isAssociateChair = user?.role === 'ASSOCIATE_CHAIRPERSON';
+    const isLeader = user?.role === 'LEADER';
+    const isAssociateLeader = user?.role === 'ASSOCIATE_LEADER';
+    const isOfficer = user?.role === 'OFFICER';
     
 
     const isChairLevel = isChairperson || isAssociateChair;
     const isLeaderLevel = isLeader || isAssociateLeader;
-    const isHigherLevel = isFromCommittee(1) || isOfficer;
+    const isHigherLevel = isFromCommittee(2) || isOfficer;
     
     const canSeeWarnings = !isMember;
     const canSeeTeam = !isMember;
-    const canSeeInterviews = isFromCommittee(2);
+    const canSeeInterviews = isFromCommittee(1);
     const canSeeProposals = isFromCommittee(3) || isFromCommittee(4) || isFromCommittee(5) || isHigherLevel;
     
     const canCreateProposals = isChairLevel;

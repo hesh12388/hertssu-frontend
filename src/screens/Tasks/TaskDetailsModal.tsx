@@ -612,7 +612,7 @@ const TaskDetailsModal = ({
                                         </View>
                                     </TouchableOpacity>
                                     
-                                    {document.uploadedBy.email === auth?.user?.email && (
+                                    {document.uploadedBy.email === auth?.user?.email  && canComment && (
                                         <TouchableOpacity onPress={() => confirmDeleteDocument(document)}>
                                             <Ionicons name="trash-outline" size={20} color="#ff4444" />
                                         </TouchableOpacity>
