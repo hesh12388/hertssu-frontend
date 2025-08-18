@@ -1,4 +1,5 @@
 import { NavigationContainer } from "@react-navigation/native";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AxiosInstance } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
@@ -15,6 +16,20 @@ interface AuthContextType {
   logout: () => Promise<void>;
   api: AxiosInstance;
 }
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Global defaults for all queries
+      staleTime: 5 * 60 * 1000,       
+      gcTime: 10 * 60 * 1000,         
+      refetchOnWindowFocus: true,      
+      retry: 2,                        
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+  },
+});
 
 // Create a auth context to be used in any other screen
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -136,11 +151,13 @@ const App = () => {
 
 
   return (
-    <AuthContext.Provider value={authContextValue}>
-      <NavigationContainer>
-        {userToken ? <AppNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-    </AuthContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={authContextValue}>
+        <NavigationContainer>
+          {userToken ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+      </AuthContext.Provider>
+    </QueryClientProvider>
   );
 };
 

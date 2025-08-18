@@ -9,6 +9,7 @@ import Users from '../screens/Admin/Users';
 import Home from '../screens/Home';
 import Interview from '../screens/Interviews/Interview';
 import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
+import TeamSearch from '../screens/profile/TeamSearch';
 import Proposals from '../screens/Proposals/Proposals';
 import Tasks from '../screens/Tasks/Tasks';
 import Warnings from '../screens/Warnings/Warnings';
@@ -123,6 +124,7 @@ const AppNavigator = () => {
       <Drawer.Screen name="Proposals" component={Proposals}/>
       <Drawer.Screen name="Admin" component={Users} />
       <Drawer.Screen name="Warnings" component={Warnings} />
+      <Drawer.Screen name="Team" component={TeamSearch} />
     </Drawer.Navigator>
   );
 };
