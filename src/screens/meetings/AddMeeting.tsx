@@ -53,7 +53,6 @@ const AddMeetingModal: React.FC<Props> = ({
   const auth = useAuth();
   const api = auth?.api;
 
-  // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -82,7 +81,6 @@ const AddMeetingModal: React.FC<Props> = ({
     }
   }, [visible, initialStart]);
 
-  // scroll helpers
   const scrollRef = useRef<ScrollView>(null);
   const positions = useRef<Record<string, number>>({});
   const storePos = (key: string) => (e: any) => {
@@ -102,25 +100,20 @@ const save = async () => {
     startTime: allDay ? "00:00" : start.toTimeString().slice(0, 5),
     endTime: allDay ? "23:59" : end.toTimeString().slice(0, 5),
     isAllDay: allDay,
-    participants: participants.map((p) => p.email), // ✅ emails only
+    participants: participants.map((p) => p.email), 
     recurrenceRule,
     reminders: reminders,
   };
-
-  console.log("📤 Sending create meeting payload:", payload);
 
   try {
     await createMeeting(api!, payload);
     onMeetingCreated?.();
     onClose();
   } catch (e) {
-    console.error("❌ Create meeting failed:", e);
+    console.error("Create meeting failed:", e);
   }
 };
 
-
-
-  // ✅ Organizer initials + display name safe
   const organizerInitials =
     `${auth?.user?.firstname?.[0] ?? ""}${auth?.user?.lastname?.[0] ?? ""}`.toUpperCase() ||
     "US";
@@ -136,7 +129,6 @@ const save = async () => {
           style={styles.sheet}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
               <Text style={styles.headerBtnText}>Cancel</Text>
@@ -147,14 +139,12 @@ const save = async () => {
             </TouchableOpacity>
           </View>
 
-          {/* Content */}
           <Pressable style={styles.content}>
             <ScrollView
               ref={scrollRef}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 100 }}
             >
-              {/* Participants row */}
               <View style={styles.group}>
                 <TouchableOpacity
                   style={styles.rowBetween}
@@ -180,7 +170,6 @@ const save = async () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Organizer */}
               <View style={styles.group}>
                 <View style={styles.rowStatic}>
                   <View style={styles.avatar}>
@@ -193,7 +182,6 @@ const save = async () => {
                 </View>
               </View>
 
-              {/* Attendees */}
               {participants.length > 0 && (
                 <View style={styles.group}>
                   {participants.map((p) => (
@@ -217,7 +205,6 @@ const save = async () => {
                 </View>
               )}
 
-              {/* All-day & times */}
               <View style={styles.group}>
                 <View style={styles.rowBetween}>
                   <View style={styles.rowLeft}>
@@ -267,7 +254,6 @@ const save = async () => {
                 )}
               </View>
 
-              {/* Location */}
               <View style={styles.group} onLayout={storePos("location")}>
                 <View style={styles.row}>
                   <View style={styles.iconBox}>
@@ -284,7 +270,6 @@ const save = async () => {
                 </View>
               </View>
 
-              {/* Title */}
               <View style={styles.group} onLayout={storePos("title")}>
                 <View style={styles.row}>
                   <View style={styles.iconBox}>
@@ -301,7 +286,6 @@ const save = async () => {
                 </View>
               </View>
 
-              {/* Description */}
               <View style={styles.group} onLayout={storePos("description")}>
                 <View style={[styles.row, { borderBottomWidth: 0 }]}>
                   <View style={styles.iconBox}>
@@ -326,7 +310,6 @@ const save = async () => {
                 </View>
               </View>
 
-              {/* Reminders */}
               <View style={styles.group}>
                 <View style={styles.row}>
                   <View style={styles.iconBox}>
@@ -353,7 +336,6 @@ const save = async () => {
                 </View>
               </View>
 
-              {/* Recurrence */}
               <View style={styles.group}>
                 <View style={styles.row}>
                   <View style={styles.iconBox}>
@@ -381,7 +363,6 @@ const save = async () => {
             </ScrollView>
           </Pressable>
 
-          {/* Native pickers */}
           {!allDay && (
             <>
           <TimeSheet
@@ -407,7 +388,6 @@ const save = async () => {
             </>
           )}
 
-          {/* Inline participant sheet */}
           {participantsVisible && (
             <View style={styles.partOverlay}>
               <View style={styles.partSheet}>
@@ -415,7 +395,6 @@ const save = async () => {
                   onClose={() => setParticipantsVisible(false)}
                   initialSelected={participants.map((p) => p.email)}
                   onSubmit={(emails: string[]) => {
-                    // convert emails to objects (minimum shape)
                     setParticipants(
                       emails.map((e, i) => ({
                         id: i,
