@@ -1,3 +1,5 @@
+import { CommitteeType, SubcommitteeType } from "./User";
+
 export interface InterviewType {
   id: string;
   name: string;
@@ -5,12 +7,11 @@ export interface InterviewType {
   phoneNumber: string;
   gafId: string;
   position: string;
-  committee: string;
-  subCommittee: string;
+  committee: CommitteeType;
+  subCommittee: SubcommitteeType | null;
   startTime: string; 
   endTime: string;  
   status: 'SCHEDULED' | 'LOGGED';
-  
   performance?: number;
   experience?: number;
   communication?: number;
@@ -18,12 +19,8 @@ export interface InterviewType {
   confidence?: number;
   accepted?: boolean;
   notes?: string;
-  
-
   interviewerName: string;
   interviewerEmail: string;
-  
-
   meetingId?: string;
   joinUrl?: string;
 }

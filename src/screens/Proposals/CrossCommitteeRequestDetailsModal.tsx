@@ -2,12 +2,19 @@ import { useAuth } from '@/App';
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosInstance } from 'axios';
 import * as DocumentPicker from 'expo-document-picker';
-import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusMessage } from '../../components/StatusMessage';
-import { usePermissions } from '../../hooks/usePermissions';
 
+import {
+    useAddCrossCommitteeComment,
+    useCrossCommitteeComments,
+    useCrossCommitteeDocuments,
+    useDeleteCrossCommitteeComment,
+    useDeleteCrossCommitteeDocument,
+    useUploadCrossCommitteeDocument
+} from '../../hooks/useProposalDetails';
 import { CommentType, CrossCommitteeRequestType, DocumentType } from '../../types/Proposal';
 
 const CrossCommitteeRequestDetailsModal = ({
@@ -20,12 +27,9 @@ const CrossCommitteeRequestDetailsModal = ({
     onClose: () => void;
 }) => {
     // Comments and documents data
-    const [comments, setComments] = useState<CommentType[]>([]);
-    const [documents, setDocuments] = useState<DocumentType[]>([]);
     const [newComment, setNewComment] = useState('');
     
     const auth = useAuth()!;
-    const permissions = usePermissions(auth?.user ?? null);
     const { api }: { api: AxiosInstance } = useAuth()!;
     
     // Status message state
@@ -35,61 +39,36 @@ const CrossCommitteeRequestDetailsModal = ({
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    const fetchComments = async () => {
-        try {
-            const response = await api.get(`/proposals/cross-committee-requests/${selectedRequest!.id}/comments`);
-            setComments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching comments:', error);
-        }
-    };
-
-    const fetchDocuments = async () => {
-        try {
-            const response = await api.get(`/proposals/cross-committee-requests/${selectedRequest!.id}/documents`);
-            setDocuments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching documents:', error);
-        }
-    };
-
-    useEffect(() => {
-        if (selectedRequest) {
-            fetchComments();
-            fetchDocuments();
-        }
-    }, [selectedRequest]);
-
     if (!visible) return null;
     if (!selectedRequest) return null;
 
+    const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: fetchComments} = useCrossCommitteeComments(selectedRequest?.id);
+    const { data: documents = [], isLoading: documentsLoading, error: documentsErro, isFetching: documentsFetching, refetch: fetchDocuments } = useCrossCommitteeDocuments(selectedRequest?.id);
+
+    const loading = commentsLoading || documentsLoading;
+    const hasError = commentsError || documentsErro;
+    const isFetching = commentsFetching || documentsFetching;
+    const addCommentMutation = useAddCrossCommitteeComment();
+    const deleteCommentMutation = useDeleteCrossCommitteeComment();
+    const uploadDocumentMutation = useUploadCrossCommitteeDocument();
+    const deleteDocumentMutation = useDeleteCrossCommitteeDocument();
+
+
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
-
-        try {
-            const response = await api.post(`/proposals/cross-committee-requests/${selectedRequest.id}/comments`, {
-                content: newComment
-            });
-
-            if (response.status === 201 || response.status === 200) {
-                setComments(prev => [response.data, ...prev]);
-                setNewComment('');
-            }
-
-        } catch (error) {
-            console.error('Error adding comment:', error);
-            Alert.alert('Error', 'Failed to add comment');
-        }
+        
+        addCommentMutation.mutate({
+            requestId: selectedRequest.id,
+            content: newComment
+        });
+        setNewComment(''); // Clear input immediately
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        try {
-            await api.delete(`/proposals/cross-committee-requests/comments/${commentId}`);
-            setComments(prev => prev.filter(comment => comment.id !== commentId));
-        } catch (error) {
-            console.error('Error deleting comment:', error);
-            Alert.alert('Error', 'Failed to delete comment');
-        }
+        deleteCommentMutation.mutate({
+            commentId,
+            requestId: selectedRequest.id
+        });
     };
 
     const confirmDeleteComment = (comment: CommentType) => {
@@ -125,12 +104,9 @@ const CrossCommitteeRequestDetailsModal = ({
                 multiple: false,
             });
 
-            if (result.canceled) {
-                return;
-            }
+            if (result.canceled) return;
 
             const file = result.assets[0];
-            
             const maxSize = 10 * 1024 * 1024; // 10MB
             if (file.size && file.size > maxSize) {
                 Alert.alert('Error', 'File size must be less than 10MB');
@@ -140,7 +116,7 @@ const CrossCommitteeRequestDetailsModal = ({
             setShowStatus(true);
             setIsLoading(true);
             setStatusMessage("Uploading document...");
-            
+
             const formData = new FormData();
             formData.append('file', {
                 uri: file.uri,
@@ -148,41 +124,38 @@ const CrossCommitteeRequestDetailsModal = ({
                 name: file.name,
             } as any);
 
-            const response = await api.post(`/proposals/cross-committee-requests/${selectedRequest.id}/documents`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
+            uploadDocumentMutation.mutate({
+                requestId: selectedRequest.id,
+                formData
+            }, {
+                onSuccess: () => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage(`${file.name} uploaded successfully!`);
+                    setTimeout(() => setShowStatus(false), 3000);
                 },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage('Failed to upload document. Please try again.');
+                    setTimeout(() => setShowStatus(false), 3000);
+                }
             });
 
-            if (response.status === 201 || response.status === 200) {
-                setDocuments(prev => [response.data, ...prev]);
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage(`${file.name} uploaded successfully!`);
-            } else {
-                throw new Error('Upload failed');
-            }
-
         } catch (error) {
-            console.error('Error uploading document:', error);
+            console.error('Error selecting document:', error);
             setIsLoading(false);
             setIsSuccess(false);
             setResultMessage('Failed to upload document. Please try again.');
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 3000);
+            setTimeout(() => setShowStatus(false), 3000);
         }
     };
 
     const handleDeleteDocument = async (documentId: string) => {
-        try {
-            await api.delete(`/proposals/cross-committee-requests/documents/${documentId}`);
-            setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-        } catch (error) {
-            console.error('Error deleting document:', error);
-            Alert.alert('Error', 'Failed to delete document');
-        }
+        deleteDocumentMutation.mutate({
+            documentId,
+            requestId: selectedRequest.id
+        });
     };
 
     const confirmDeleteDocument = (document: DocumentType) => {
@@ -231,7 +204,19 @@ const CrossCommitteeRequestDetailsModal = ({
                         <Text style={styles.modalTitle}>Cross-Committee Request</Text>
                     </View>
 
-                    <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                    <ScrollView 
+                        style={styles.modalContent} 
+                        keyboardShouldPersistTaps="handled"
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={isFetching} 
+                                onRefresh={() => {
+                                    fetchComments();
+                                    fetchDocuments();
+                                }} 
+                            />
+                        }
+                    >
 
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Request Information</Text>
@@ -413,6 +398,28 @@ const CrossCommitteeRequestDetailsModal = ({
                     />
                 </View>
             )}
+
+            {(hasError) && !showStatus && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                        isLoading={false}
+                        isSuccess={false}
+                        loadingMessage=""
+                        resultMessage="Error loading data. Pull to retry."
+                    />
+                </View>
+            )}
+
+            {(loading) && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                        isLoading={true}
+                        isSuccess={false}
+                        loadingMessage="Loading request details..."
+                        resultMessage=""
+                    />
+                </View>
+            )}
         </Modal>
     );
 };
@@ -424,6 +431,12 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

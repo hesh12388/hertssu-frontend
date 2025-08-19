@@ -82,7 +82,6 @@ const Login = () => {
       const data = await response.json();
       
       if (response.ok) {
-        // Same as email/password flow - login with your JWT tokens
         await auth?.login(data.token, data.refreshToken);
       } else {
         Alert.alert('Login Failed', data.message || 'An error occurred');

@@ -1,7 +1,8 @@
 import { useAuth } from '@/App';
+import { useCommittees } from '@/src/hooks/useCommittees';
+import { useLogInterview, useUpdateInterview } from '@/src/hooks/useInterviews';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AxiosInstance } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -9,19 +10,22 @@ import RNPickerSelect from 'react-native-picker-select';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusMessage } from '../../components/StatusMessage';
 import { InterviewType } from '../../types/Interview';
-const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES, POSITIONS } : {selectedInterview: InterviewType | null, visible: boolean, onClose: () => void, onUpdate: (interview: InterviewType) => void, COMMITTEES: Record<string, string[]>, POSITIONS: { label: string; value: string; }[]}) => {
+const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnly} : {selectedInterview: InterviewType | null, visible: boolean, onClose: () => void, POSITIONS: { label: string; value: string; }[], isReadOnly:boolean}) => {
 
     const [editData, setEditData] = useState<InterviewType | null>(null);
     const [isEditCalendarVisible, setIsEditCalendarVisible] = useState(false);
     const auth = useAuth()!;
-    const { api }: { api: AxiosInstance } = useAuth()!;
-    
+   
+    const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
+
+    const updateInterviewMutation = useUpdateInterview();
+    const logInterviewMutation = useLogInterview();
 
     useEffect(() => {
         if (selectedInterview) {
@@ -42,6 +46,12 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
             };
         });
     }
+
+    const getSubcommittees = () => {
+        if (!editData.committee.id) return [];
+        const selectedCommittee = committees.find(c => c.id === editData.committee.id);
+        return selectedCommittee?.subcommittees || [];
+    };
     const handleUpdateInterview = async () => {
         if (!editData) return;
         if (!editData.name || !editData.gafEmail || !editData.position || !editData.committee || !editData.startTime || !editData.endTime) {
@@ -50,65 +60,56 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Updating your interview...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Updating your interview...");
+        setShowStatus(true);
 
-            // editData already contains ISO strings, so we can use them directly
-            const requestBody = {
-                name: editData.name,
-                gafEmail: editData.gafEmail,
-                phoneNumber: editData.phoneNumber,
-                gafId: editData.gafId,
-                position: editData.position,
-                committee: editData.committee,
-                subCommittee: editData.subCommittee,
-                startTime: editData.startTime,
-                endTime: editData.endTime,  
-            };
+        const requestBody = {
+            name: editData.name,
+            gafEmail: editData.gafEmail,
+            phoneNumber: editData.phoneNumber,
+            gafId: editData.gafId,
+            position: editData.position,
+            committeeId: editData.committee.id,
+            subCommitteeId: editData.subCommittee?.id || 0,
+            startTime: editData.startTime,
+            endTime: editData.endTime,
+        };
 
-            console.log('Updating interview with data:', requestBody);
+        console.log('Updating interview with data:', requestBody);
 
-            // Make API call to update interview
-            const response = await api.put(`/interviews/${editData.id}`, requestBody);
-
-            if (response.status === 200) {
-                console.log('Interview updated successfully:', response.data);
+        updateInterviewMutation.mutate({ interviewId: editData.id, data: requestBody }, {
+            onSuccess: (updatedInterview) => {
+                console.log('Interview updated successfully:', updatedInterview);
                 setIsLoading(false);
                 setIsSuccess(true);
                 setResultMessage("Interview updated successfully!");
-
-                // Update the interview in the list
-                onUpdate(response.data);
-            }
-            else{
+                setTimeout(() => {
+                    setShowStatus(false);
+                    onClose();
+                }, 3000);
+            },
+            onError: () => {
+                console.error('Error updating interview');
                 setIsLoading(false);
                 setIsSuccess(false);
+                setResultMessage("Error updating interview, please try again");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    if (isSuccess) {
+                        onClose();
+                    }
+                }, 3000);
             }
-
-        } catch (error) {
-            console.error('Error updating interview:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error updating interview, please try again");
-        } finally {
-            console.log('Closing modal after updating');
-            setTimeout(() => {
-                setShowStatus(false);
-                if (isSuccess) {
-                    onClose();
-                }
-            }, 3000);
-        }
+        });
     };
 
     const handleLogInterview = async () => {
-
         if (!editData) return;
+        
         // Validate required logging fields
         if (!editData.performance || !editData.experience || !editData.communication || 
-            !editData.teamwork || !editData.confidence || !editData.accepted ) {
+            !editData.teamwork || !editData.confidence || editData.accepted === undefined) {
             Alert.alert('Error', 'Please fill in all assessment fields');
             return;
         }
@@ -124,55 +125,46 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
             }
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Logging interview results...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Logging interview results...");
+        setShowStatus(true);
 
-            // Prepare logging data
-            const requestBody = {
-                performance: editData.performance,
-                experience:editData.experience,
-                communication: editData.communication,
-                teamwork: editData.teamwork,
-                confidence: editData.confidence,
-                accepted: editData.accepted,
-                notes: editData.notes || ''
-            };
+        const requestBody = {
+            performance: editData.performance,
+            experience: editData.experience,
+            communication: editData.communication,
+            teamwork: editData.teamwork,
+            confidence: editData.confidence,
+            accepted: editData.accepted,
+            notes: editData.notes || ''
+        };
 
-            console.log('Logging interview with data:', requestBody);
+        console.log('Logging interview with data:', requestBody);
 
-            // Make API call to log interview
-            const response = await api.put(`/interviews/${editData.id}/log`, requestBody);
-
-            if (response.status === 200) {
-                console.log('Interview logged successfully:', response.data);
+        logInterviewMutation.mutate({ interviewId: editData.id, data: requestBody }, {
+            onSuccess: (updatedInterview) => {
+                console.log('Interview logged successfully:', updatedInterview);
                 setIsLoading(false);
                 setIsSuccess(true);
                 setResultMessage("Interview logged successfully!");
-
-                // Update the interview in the list
-                onUpdate(response.data);
-            }
-            else{
+                setTimeout(() => {
+                    setShowStatus(false);
+                    onClose();
+                }, 3000);
+            },
+            onError: () => {
+                console.error('Error logging interview');
                 setIsLoading(false);
                 setIsSuccess(false);
+                setResultMessage("Error logging interview, please try again");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    if (isSuccess) {
+                        onClose();
+                    }
+                }, 3000);
             }
-
-        } catch (error) {
-            console.error('Error logging interview:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error logging interview, please try again");
-        } finally {
-            console.log('Closing modal after logging');
-            setTimeout(() => {
-                setShowStatus(false);
-                if (isSuccess) {
-                    onClose();
-                }
-            }, 3000);
-        }
+        });
     };
 
     const handleJoinMeeting = async () => {
@@ -185,11 +177,9 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
         } catch (error) {
             console.error('Error opening Zoom:', error);
         }
-        };
+    };
     
 
-
-    const COMMITTEE_OPTIONS = Object.keys(COMMITTEES);
     const disabled = new Date(editData.endTime) < new Date() || editData.interviewerEmail!== auth?.user?.email;
     const logDisabled = editData.status === "LOGGED" || editData.interviewerEmail!== auth?.user?.email;
     return (
@@ -224,7 +214,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.name}
                             onChangeText={(value) => updateEditData('name', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
+                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
                             placeholder="Enter candidate's full name"
                             placeholderTextColor="#999"
                         />
@@ -239,7 +229,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.gafEmail}
                             onChangeText={(value) => updateEditData('gafEmail', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
+                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
                             placeholder="Enter GAF email"
                             placeholderTextColor="#999"
                             keyboardType="email-address"
@@ -255,7 +245,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.phoneNumber}
                             onChangeText={(value) => updateEditData('phoneNumber', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
+                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
                             placeholder="Enter phone number"
                             placeholderTextColor="#999"
                             keyboardType="phone-pad"
@@ -270,7 +260,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.gafId}
                             onChangeText={(value) => updateEditData('gafId', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
+                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
                             placeholder="Enter GAF ID"
                             placeholderTextColor="#999"
                         />
@@ -288,14 +278,15 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     }}
                                     items={POSITIONS}
                                     value={editData.position}
-                                    disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email}
+                                    disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email && !isReadOnly}
                                     placeholder={{ label: "Select position...", value: "" }}
                                     Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}
                                     style={pickerSelectStyles}
                                 />
                             </View>
-                        </View>
+                    </View>
 
+                    {/* Committee */}
                     <View style={styles.inputGroup}>
                         <View style={styles.label}>
                             <Text style={styles.labelText}>Committee</Text>
@@ -304,44 +295,57 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                         <View style={[styles.pickerContainer, disabled && styles.pickerContainerDisabled]}>
                             <RNPickerSelect
                                 onValueChange={(value) => {
-                                    updateEditData('committee', value);
-                
-                                    updateEditData('subCommittee', '');
+                                    // Find the selected committee object
+                                    const selectedCommittee = committees.find(c => c.id.toString() === value);
+                                    updateEditData('committee', selectedCommittee || null);
+                                    updateEditData('subCommittee', null); // Reset to null object
                                 }}
-                                items={COMMITTEE_OPTIONS.map(committee => ({
-                                    label: committee,
-                                    value: committee
+                                items={committees.map(committee => ({
+                                    label: committee.name,
+                                    value: committee.id.toString()
                                 }))}
-                                value={editData.committee}
-                                placeholder={{ label: "Select committee...", value: "" }}
-                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email}
+                                value={editData.committee?.id?.toString() || ""} // Get ID from committee object
+                                placeholder={{ label: committeesLoading ? "Loading committees..." : "Select committee...", value: "" }}
+                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail != auth?.user?.email || isReadOnly || committeesLoading}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
                         </View>
                     </View>
+                    {/* Subcommittee */}
                     <View style={styles.inputGroup}>
                         <View style={styles.label}>
                             <Text style={styles.labelText}>Subcommittee</Text>
                         </View>
-                        <View style={[styles.pickerContainer, (disabled || !editData.committee || COMMITTEES[editData.committee]?.length === 0) && styles.pickerContainerDisabled]}>
+                        <View style={[
+                            styles.pickerContainer, 
+                            (disabled || !editData.committee || getSubcommittees().length === 0) && styles.pickerContainerDisabled
+                        ]}>
                             <RNPickerSelect
                                 onValueChange={(value) => {
-                                    updateEditData('subCommittee', value);
+                                    // Find the selected subcommittee object
+                                    const selectedSubcommittee = getSubcommittees().find(s => s.id.toString() === value);
+                                    updateEditData('subCommittee', selectedSubcommittee || null);
                                 }}
-                                items={COMMITTEES[selectedInterview.committee]?.map(subcommittee => ({
-                                    label: subcommittee,
-                                    value: subcommittee
-                                })) || []}
-                                value={editData.subCommittee}
-                                placeholder={{ label: "Select subcommittee...", value: "" }}
-                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email || COMMITTEES[editData.committee]?.length === 0}
+                                items={getSubcommittees().map(subcommittee => ({
+                                    label: subcommittee.name,
+                                    value: subcommittee.id.toString()
+                                }))}
+                                value={editData.subCommittee?.id?.toString() || ""} // Get ID from subcommittee object
+                                placeholder={{ 
+                                    label: !editData.committee 
+                                        ? "Select committee first..." 
+                                        : getSubcommittees().length === 0 
+                                            ? "No subcommittees available" 
+                                            : "Select subcommittee...", 
+                                    value: "" 
+                                }}
+                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail != auth?.user?.email || !editData.committee || getSubcommittees().length === 0 || isReadOnly || committeesLoading}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
                         </View>
                     </View>
-                    
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Interview Schedule</Text>
                     </View>
@@ -354,7 +358,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                         
                         <TouchableOpacity 
                             style={[styles.dateDisplay, disabled && styles.pickerContainerDisabled]} 
-                            onPress={(new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email) ? () =>{} : () => setIsEditCalendarVisible(!isEditCalendarVisible)}
+                            onPress={(new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email || isReadOnly) ? () =>{} : () => setIsEditCalendarVisible(!isEditCalendarVisible)}
                         >
                             <Text style={styles.dateText}>
                                 {new Date(editData.startTime).toLocaleDateString()}
@@ -412,7 +416,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                         
                        <View style={[styles.timeRow]}>
                             <View style={styles.timeSelector}>
-                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email) ? (
+                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email && !isReadOnly) ? (
                                     <DateTimePicker
                                         value={new Date(editData?.startTime)}
                                         mode="time"
@@ -438,7 +442,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                 <Text style={styles.separatorText}>to</Text>
                             </View>
                             <View style={styles.timeSelector}>
-                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email) ? (
+                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email && !isReadOnly) ? (
                                     <DateTimePicker
                                         value={new Date(editData?.endTime)}
                                         mode="time"
@@ -490,7 +494,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                         </View>
                     </View>
 
-                    {(selectedInterview.status === 'LOGGED' || new Date(editData.startTime) < new Date()) && (
+                    {(selectedInterview.status === 'LOGGED' || new Date(editData.endTime) < new Date()) && (
                         <>
                             <View style={styles.sectionHeader}>
                                 <Text style={styles.sectionTitle}>Interview Assessment</Text>
@@ -504,7 +508,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData.performance?.toString() || ''}
                                     onChangeText={(value) => updateEditData('performance', value ? parseInt(value) : undefined)}
-                                    editable={editData.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Rate performance 1-10"
                                     placeholderTextColor="#999"
                                     keyboardType="numeric"
@@ -519,7 +523,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData.experience?.toString() || ''}
                                     onChangeText={(value) => updateEditData('experience', value ? parseInt(value) : undefined)}
-                                    editable={editData.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Rate experience 1-10"
                                     placeholderTextColor="#999"
                                     keyboardType="numeric"
@@ -534,7 +538,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData.communication?.toString() || ''}
                                     onChangeText={(value) => updateEditData('communication', value ? parseInt(value) : undefined)}
-                                    editable={editData.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Rate communication 1-10"
                                     placeholderTextColor="#999"
                                     keyboardType="numeric"
@@ -549,7 +553,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData.teamwork?.toString() || ''}
                                     onChangeText={(value) => updateEditData('teamwork', value ? parseInt(value) : undefined)}
-                                    editable={editData.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Rate teamwork 1-10"
                                     placeholderTextColor="#999"
                                     keyboardType="numeric"
@@ -564,7 +568,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData.confidence?.toString() || ''}
                                     onChangeText={(value) => updateEditData('confidence', value ? parseInt(value) : undefined)}
-                                    editable={editData.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Rate confidence 1-10"
                                     placeholderTextColor="#999"
                                     keyboardType="numeric"
@@ -579,7 +583,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, onUpdate, COMMITTEES
                                     style={[styles.input, styles.textArea, logDisabled && styles.pickerContainerDisabled]}
                                     value={editData!.notes || ''}
                                     onChangeText={(value) => updateEditData('notes', value)}
-                                    editable={selectedInterview.status !== 'LOGGED' || editData.interviewerEmail=== auth?.user?.email}
+                                    editable={editData.status !== 'LOGGED' && editData.interviewerEmail=== auth?.user?.email}
                                     placeholder="Add any additional notes about the interview..."
                                     placeholderTextColor="#999"
                                     multiline

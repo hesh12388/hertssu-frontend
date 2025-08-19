@@ -6,9 +6,9 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
 import Users from '../screens/Admin/Users';
-import Home from '../screens/Home';
 import Interview from '../screens/Interviews/Interview';
 import UpcomingMeetings from '../screens/meetings/UpcomingMeetings';
+import MyProgress from '../screens/MyProgress/MyProgress';
 import TeamSearch from '../screens/profile/TeamSearch';
 import Proposals from '../screens/Proposals/Proposals';
 import Tasks from '../screens/Tasks/Tasks';
@@ -35,10 +35,9 @@ const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any
   };
 
   const menuItems: MenuItem[] = [
-    { name: 'Home', icon: 'home-outline', route: 'Home' },
+    { name: 'My Progress', icon: 'bar-chart-outline', route: 'MyProgress' },
     { name: 'Tasks', icon: 'grid-outline', route: 'Tasks' },
     { name: 'Meetings', icon: 'calendar-outline', route: 'Meetings' },
-    { name: 'My Progress', icon: 'bar-chart-outline', route: 'MyProgress' },
     { name: 'Warnings', icon: 'warning-outline', route: 'Warnings' },
     canSeeTeam && { name: 'Team', icon: 'accessibility-outline', route: 'Team' },
     canSeeInterviews && { name: 'Interviews', icon: 'person-outline', route: 'Interviews' },
@@ -103,7 +102,7 @@ const CustomDrawerContent = ({ navigation, state }: { navigation: any, state:any
 const AppNavigator = () => {
   return (
     <Drawer.Navigator
-      initialRouteName="Home"
+      initialRouteName="MyProgress"
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
@@ -117,7 +116,7 @@ const AppNavigator = () => {
         drawerType:"front"
       }}
     >
-      <Drawer.Screen name="Home" component={Home} />
+      <Drawer.Screen name="MyProgress" component={MyProgress} />
       <Drawer.Screen name="Interviews" component={Interview}/>
       <Drawer.Screen name="Meetings" component={UpcomingMeetings}/>
       <Drawer.Screen name="Tasks" component={Tasks}/>

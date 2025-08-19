@@ -1,15 +1,14 @@
-import { useAuth } from '@/App';
+import { useCommittees } from '@/src/hooks/useCommittees';
+import { useCreateInterview } from '@/src/hooks/useInterviews';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AxiosInstance } from 'axios';
 import React, { useState } from 'react';
 import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
-import { InterviewType } from '../../types/Interview';
-const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COMMITTEES: Record<string, string[]>, POSITIONS: { label: string; value: string; }[], onClose: () => void, onUpdate: (interview: InterviewType) => void, visible: boolean}) => {
-    const { api }: { api: AxiosInstance } = useAuth()!;
+const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: string; value: string; }[], onClose: () => void, visible: boolean}) => {
+  
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
     const [formData, setFormData] = useState({
             name: '',
@@ -17,8 +16,8 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
             phoneNumber:'',
             gafId: '',
             position: '',
-            committee: '',
-            subcommittee: '',
+            committeeId: '',
+            subcommitteeId: '',
             date: new Date().toISOString().split('T')[0],
             startTime: new Date(),
             endTime: new Date()
@@ -28,7 +27,14 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
     const [resultMessage, setResultMessage] = useState("");
-    const  COMMITTEE_OPTIONS = Object.keys(COMMITTEES);
+    const createInterviewMutation = useCreateInterview();
+    const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
+
+    const getSubcommittees = () => {
+        if (!formData.committeeId) return [];
+        const selectedCommittee = committees.find(c => c.id.toString() === formData.committeeId);
+        return selectedCommittee?.subcommittees || [];
+    };
             
     const updateFormData = (field: string, value: any) => {
         setFormData(prev => ({
@@ -46,8 +52,8 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
             phoneNumber:'',
             gafId: '',
             position: '',
-            committee: '',
-            subcommittee: '',
+            committeeId: '',
+            subcommitteeId: '',
             date:new Date().toISOString().split('T')[0],
             startTime: new Date(),
             endTime: new Date()
@@ -72,70 +78,62 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
 
 
     const handleScheduleInterview = async () => {
-         
-            if (!formData.name || !formData.gafEmail || !formData.position || !formData.committee || !formData.date || !formData.startTime || !formData.endTime) {
-                console.log('Form data is incomplete:', formData);
-                Alert.alert('Error', 'Please fill in all required fields');
-                return;
-            }
-    
-            try {
-                setIsLoading(true);
-                setStatusMessage("Scheduling your interview...")
-                setShowStatus(true);
-    
-                // Convert date and times to LocalDateTime format (ISO string)
-                const dateStr = formData.date; 
-                const startTimeStr = convertTo24Hour(formData.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))
-                const endTimeStr = convertTo24Hour(formData.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
-                
-                // Combine date and time for LocalDateTime format
-                const startDateTime = `${dateStr}T${startTimeStr}:00`;
-                const endDateTime = `${dateStr}T${endTimeStr}:00`;
-    
-                const requestBody = {
-                    name: formData.name,
-                    gafEmail: formData.gafEmail,
-                    phoneNumber: formData.phoneNumber,
-                    gafId: formData.gafId,
-                    position: formData.position,
-                    committee: formData.committee,
-                    subCommittee: formData.subcommittee, 
-                    startTime: startDateTime,
-                    endTime: endDateTime
-                };
-                console.log('Scheduling interview with data:', requestBody);
-                // Make API call (using your existing axios instance)
-                const response = await api.post('/interviews', requestBody);
-    
-                if (response.status === 201) {
-                    console.log('Interview scheduled successfully:', response.data);
-                    setIsLoading(false);
-                    setIsSuccess(true);
-                    setResultMessage("Interview scheduled succesfully!")
-                    const newInterview = response.data;
-                    onUpdate(newInterview);
-                }
-                else{
-                    console.log('Failed to schedule interview:', response.data);
-                    setIsLoading(false);
-                    setIsSuccess(false);
-                }
+        if (!formData.name || !formData.gafEmail || !formData.position || !formData.committeeId || !formData.date || !formData.startTime || !formData.endTime) {
+            console.log('Form data is incomplete:', formData);
+            Alert.alert('Error', 'Please fill in all required fields');
+            return;
+        }
+
+        setIsLoading(true);
+        setStatusMessage("Scheduling your interview...");
+        setShowStatus(true);
+
+        // Convert date and times to LocalDateTime format
+        const dateStr = formData.date;
+        const startTimeStr = convertTo24Hour(formData.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+        const endTimeStr = convertTo24Hour(formData.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
         
-            } catch (error) {
-                console.error('Error scheduling interview:', error);
+        // Combine date and time for LocalDateTime format
+        const startDateTime = `${dateStr}T${startTimeStr}:00`;
+        const endDateTime = `${dateStr}T${endTimeStr}:00`;
+
+        const requestBody = {
+            name: formData.name,
+            gafEmail: formData.gafEmail,
+            phoneNumber: formData.phoneNumber,
+            gafId: formData.gafId,
+            position: formData.position,
+            committeeId: parseInt(formData.committeeId),                         
+            subCommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null,
+            startTime: startDateTime,
+            endTime: endDateTime
+        };
+
+        console.log('Scheduling interview with data:', requestBody);
+
+        createInterviewMutation.mutate(requestBody, {
+            onSuccess: (newInterview) => {
+                console.log('Interview scheduled successfully:', newInterview);
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("Interview scheduled successfully!");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
+            },
+            onError: () => {
+                console.error('Error scheduling interview');
                 setIsLoading(false);
                 setIsSuccess(false);
-                setResultMessage("Error scheduling interview, please try again")
-            }
-            finally{
-                console.log('Closing modal after scheduling');
+                setResultMessage("Error scheduling interview, please try again");
                 setTimeout(() => {
                     setShowStatus(false);
                     handleCloseModal();
                 }, 3000);
             }
-        };
+        });
+    };
 
     return (
          <Modal
@@ -242,7 +240,7 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                             </View>
                         </View>
 
-                        {/* Committee */}
+                       {/* Committee */}
                         <View style={styles.inputGroup}>
                             <View style={styles.label}>
                                 <Text style={styles.labelText}>Committee</Text>
@@ -251,16 +249,17 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                             <View style={styles.pickerContainer}>
                                 <RNPickerSelect
                                     onValueChange={(value) => {
-                                        updateFormData('committee', value);
+                                        updateFormData('committeeId', value);
                                         // Reset subcommittee when committee changes
-                                        updateFormData('subcommittee', '');
+                                        updateFormData('subCommitteeId', '');
                                     }}
-                                    items={COMMITTEE_OPTIONS.map(committee => ({
-                                        label: committee,
-                                        value: committee
+                                    items={committees.map(committee => ({
+                                        label: committee.name,
+                                        value: committee.id.toString()
                                     }))}
-                                    value={formData.committee}
-                                    placeholder={{ label: "Select committee...", value: "" }}
+                                    value={formData.committeeId}
+                                    placeholder={{ label: committeesLoading ? "Loading committees..." : "Select committee...", value: "" }}
+                                    disabled={committeesLoading}
                                     Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}
                                     style={pickerSelectStyles}
                                 />
@@ -272,24 +271,31 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                             <View style={styles.label}>
                                 <Text style={styles.labelText}>Subcommittee</Text>
                             </View>
-                            <View style={[styles.pickerContainer, (!formData.committee || COMMITTEES[formData.committee]?.length === 0) && styles.pickerContainerDisabled]}>
+                            <View style={[
+                                styles.pickerContainer, 
+                                (!formData.committeeId || getSubcommittees().length === 0) && styles.pickerContainerDisabled
+                            ]}>
                                 <RNPickerSelect
-                                    onValueChange={(value) => updateFormData('subcommittee', value)}
-                                    items={formData.committee && COMMITTEES[formData.committee] ? 
-                                        COMMITTEES[formData.committee].map(subcommittee => ({
-                                            label: subcommittee,
-                                            value: subcommittee
-                                        })) : []
-                                    }
-                                    value={formData.subcommittee}
-                                    placeholder={{ label: "Select subcommittee...", value: "" }}
-                                    disabled={!formData.committee || COMMITTEES[formData.committee]?.length === 0}
+                                    onValueChange={(value) => updateFormData('subCommitteeId', value)}
+                                    items={getSubcommittees().map(subcommittee => ({
+                                        label: subcommittee.name,
+                                        value: subcommittee.id.toString()
+                                    }))}
+                                    value={formData.subcommitteeId}
+                                    placeholder={{ 
+                                        label: !formData.committeeId 
+                                            ? "Select committee first..." 
+                                            : getSubcommittees().length === 0 
+                                                ? "No subcommittees available" 
+                                                : "Select subcommittee...", 
+                                        value: "" 
+                                    }}
+                                    disabled={!formData.committeeId || getSubcommittees().length === 0 || committeesLoading}
                                     Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}
                                     style={pickerSelectStyles}
                                 />
                             </View>
                         </View>
-
                         {/* Date */}
                         <View style={styles.inputGroup}>
                             <View style={styles.label}>
@@ -408,6 +414,17 @@ const ScheduleModal = ({COMMITTEES, POSITIONS, onClose, onUpdate, visible}: {COM
                             />
                         </View>
                     )}
+
+                    {error && (
+                        <View style={styles.errorContainer}>
+                            <StatusMessage 
+                                isLoading={false}
+                                isSuccess={false}
+                                loadingMessage={""}
+                                resultMessage={`Error loading committees`}
+                            />
+                        </View>
+                    )}
                 </SafeAreaView>
             </Modal>
     )
@@ -422,6 +439,12 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         zIndex: 1000, 
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalContainer: {
         flex: 1,

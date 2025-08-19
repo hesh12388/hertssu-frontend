@@ -1,10 +1,11 @@
 import { useAuth } from '@/App';
-import { usePermissions } from '@/src/hooks/usePermissions';
+import { useAddComment, useDeleteComment, useDeleteDocument, useProposalComments, useProposalCrossCommitteeRequests, useProposalDocuments, useUploadDocument } from '@/src/hooks/useProposalDetails';
+import { useDeleteProposal, useUpdateProposal, useUpdateProposalStatus } from '@/src/hooks/useProposals';
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosInstance } from 'axios';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,32 +18,21 @@ const ProposalDetailsModal = ({
     visible,
     selectedProposal,
     onClose,
-    onUpdate,
-    onDelete
 }: {
     selectedProposal: ProposalType | null;
     visible: boolean;
     onClose: () => void;
-    onUpdate: (proposal: ProposalType) => void;
-    onDelete: (proposalId: number) => void;
 }) => {
     const [editData, setEditData] = useState<ProposalType | null>(null);
     const [activeTab, setActiveTab] = useState<'proposal' | 'crossCommittee'>('proposal');
     const [isEditCalendarVisible, setIsEditCalendarVisible] = useState(false);
     
-   
-    const [comments, setComments] = useState<CommentType[]>([]);
-    const [documents, setDocuments] = useState<DocumentType[]>([]);
     const [newComment, setNewComment] = useState('');
-    
-    
-    const [crossCommitteeRequests, setCrossCommitteeRequests] = useState<CrossCommitteeRequestType[]>([]);
     const [isCreateCrossCommitteeModalVisible, setIsCreateCrossCommitteeModalVisible] = useState(false);
     const [selectedCrossCommitteeRequest, setSelectedCrossCommitteeRequest] = useState<CrossCommitteeRequestType | null>(null);
     const [showCrossCommitteeRequestDetails, setShowCrossCommitteeRequestDetails] = useState(false);
 
     const auth = useAuth()!;
-    const permissions = usePermissions(auth?.user ?? null);
     const { api }: { api: AxiosInstance } = useAuth()!;
     
     
@@ -52,45 +42,32 @@ const ProposalDetailsModal = ({
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    const fetchComments = async () => {
-        try {
-            const response = await api.get(`/proposals/${selectedProposal!.id}/comments`);
-            setComments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching comments:', error);
-        }
-    };
+    if (!visible) return null;
+    if (!selectedProposal) return null;
+    if (!editData) return null;
 
-    const fetchDocuments = async () => {
-        try {
-            const response = await api.get(`/proposals/${selectedProposal!.id}/documents`);
-            setDocuments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching documents:', error);
-        }
-    };
+    const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: fetchComments } = useProposalComments(selectedProposal.id);
+    const { data: documents = [], isLoading: documentsLoading, error: documentsError, isFetching: documentsFetching, refetch: fetchDocuments } = useProposalDocuments(selectedProposal.id);
+    const { data: crossCommitteeRequests = [], isLoading: crossCommitteeLoading, error: crossCommitteeError, isFetching: crossCommitteeFetching, refetch: fetchCrossCommittee } = useProposalCrossCommitteeRequests(selectedProposal?.id);
 
-    const fetchCrossCommitteeRequests = async () => {
-        try {
-            const response = await api.get(`/proposals/${selectedProposal!.id}/cross-committee-requests`);
-            setCrossCommitteeRequests(response.data || []);
-        } catch (error) {
-            console.error('Error fetching cross-committee requests:', error);
-        }
-    };
+    const hasError = commentsError || documentsError || crossCommitteeError;
+    const isFetching = commentsFetching || documentsFetching || crossCommitteeFetching;
+    const loading = commentsLoading || documentsLoading || crossCommitteeLoading;
+
+
+    const addCommentMutation = useAddComment();
+    const deleteCommentMutation = useDeleteComment();
+    const uploadDocumentMutation = useUploadDocument();
+    const deleteDocumentMutation = useDeleteDocument();
+    const updateProposalMutation = useUpdateProposal();
+    const updateStatusMutation = useUpdateProposalStatus();
+    const deleteProposalMutation = useDeleteProposal();
 
     useEffect(() => {
         if (selectedProposal) {
             setEditData({ ...selectedProposal });
-            fetchComments();
-            fetchDocuments();
-            fetchCrossCommitteeRequests();
         }
     }, [selectedProposal]);
-
-    if (!visible) return null;
-    if (!selectedProposal) return null;
-    if (!editData) return null;
 
     const updateEditData = (field: string, value: any) => {
         setEditData(prev => {
@@ -109,111 +86,80 @@ const ProposalDetailsModal = ({
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Updating proposal...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Updating proposal...");
+        setShowStatus(true);
 
-            const requestBody = {
-                title: editData.title,
-                description: editData.description,
-                dueDate: editData.dueDate,
-                priority: editData.priority
-            };
+        const requestBody = {
+            title: editData.title,
+            description: editData.description,
+            dueDate: editData.dueDate,
+            priority: editData.priority
+        };
 
-            const response = await api.put(`/proposals/${editData.id}`, requestBody);
-
-            if (response.status === 200) {
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Proposal updated successfully!");
-                onUpdate(response.data);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
+        updateProposalMutation.mutate(
+            { proposalId: editData.id, data: requestBody },
+            {
+                onSuccess: (updatedProposal) => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Proposal updated successfully!");
+                    setEditData(updatedProposal); 
+                   
+                    setTimeout(() => setShowStatus(false), 3000);
+                },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error updating proposal, please try again");
+                    setTimeout(() => setShowStatus(false), 3000);
+                }
             }
-
-        } catch (error) {
-            console.error('Error updating proposal:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error updating proposal, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 3000);
-        }
+        );
     };
 
     const handleStatusChange = async (newStatus: string) => {
         if (!editData) return;
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Updating status...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Updating status...");
+        setShowStatus(true);
 
-            const response = await api.patch(`/proposals/${editData.id}/status`, { status: newStatus });
-
-            if (response.status === 200) {
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Status updated successfully!");
-                const updatedProposal: ProposalType = response.data;
-                setEditData(updatedProposal);
-                onUpdate(updatedProposal);
-                 
-                setCrossCommitteeRequests(prev => 
-                    prev.map(request => ({
-                        ...request,
-                        status: newStatus as 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED'
-                    }))
-                );
-                
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
+        updateStatusMutation.mutate(
+            { proposalId: editData.id, status: newStatus },
+            {
+                onSuccess: (updatedProposal) => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Status updated successfully!");
+                    setEditData(updatedProposal); // Update local form state
+                    setTimeout(() => setShowStatus(false), 2000);
+                },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error updating status, please try again");
+                    setTimeout(() => setShowStatus(false), 2000);
+                }
             }
-
-        } catch (error) {
-            console.error('Error updating status:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error updating status, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2000);
-        }
+        );
     };
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
-
-        try {
-            const response = await api.post(`/proposals/${editData!.id}/comments`, {
-                content: newComment
-            });
-
-            if (response.status === 201 || response.status === 200) {
-                setComments(prev => [response.data, ...prev]);
-                setNewComment('');
-            }
-
-        } catch (error) {
-            console.error('Error adding comment:', error);
-            Alert.alert('Error', 'Failed to add comment');
-        }
+        
+        addCommentMutation.mutate({
+            proposalId: editData!.id,
+            content: newComment
+        });
+        setNewComment('');
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        try {
-            await api.delete(`/proposals/comments/${commentId}`);
-            setComments(prev => prev.filter(comment => comment.id !== commentId));
-        } catch (error) {
-            console.error('Error deleting comment:', error);
-            Alert.alert('Error', 'Failed to delete comment');
-        }
+        deleteCommentMutation.mutate({
+            commentId,
+            proposalId: editData!.id
+        });
     };
 
     const confirmDeleteComment = (comment: CommentType) => {
@@ -249,12 +195,9 @@ const ProposalDetailsModal = ({
                 multiple: false,
             });
 
-            if (result.canceled) {
-                return;
-            }
+            if (result.canceled) return;
 
             const file = result.assets[0];
-            
             const maxSize = 10 * 1024 * 1024; // 10MB
             if (file.size && file.size > maxSize) {
                 Alert.alert('Error', 'File size must be less than 10MB');
@@ -264,7 +207,7 @@ const ProposalDetailsModal = ({
             setShowStatus(true);
             setIsLoading(true);
             setStatusMessage("Uploading document...");
-            
+
             const formData = new FormData();
             formData.append('file', {
                 uri: file.uri,
@@ -272,41 +215,38 @@ const ProposalDetailsModal = ({
                 name: file.name,
             } as any);
 
-            const response = await api.post(`/proposals/${editData!.id}/documents`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
+            uploadDocumentMutation.mutate({
+                proposalId: editData!.id,
+                formData
+            }, {
+                onSuccess: () => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage(`${file.name} uploaded successfully!`);
+                    setTimeout(() => setShowStatus(false), 3000);
                 },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage('Failed to upload document. Please try again.');
+                    setTimeout(() => setShowStatus(false), 3000);
+                }
             });
 
-            if (response.status === 201 || response.status === 200) {
-                setDocuments(prev => [response.data, ...prev]);
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage(`${file.name} uploaded successfully!`);
-            } else {
-                throw new Error('Upload failed');
-            }
-
         } catch (error) {
-            console.error('Error uploading document:', error);
+            console.error('Error selecting document:', error);
             setIsLoading(false);
             setIsSuccess(false);
             setResultMessage('Failed to upload document. Please try again.');
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 3000);
+            setTimeout(() => setShowStatus(false), 3000);
         }
     };
 
     const handleDeleteDocument = async (documentId: string) => {
-        try {
-            await api.delete(`/proposals/documents/${documentId}`);
-            setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-        } catch (error) {
-            console.error('Error deleting document:', error);
-            Alert.alert('Error', 'Failed to delete document');
-        }
+        deleteDocumentMutation.mutate({
+            documentId,
+            proposalId: editData!.id
+        });
     };
 
     const confirmDeleteDocument = (document: DocumentType) => {
@@ -319,57 +259,48 @@ const ProposalDetailsModal = ({
             ]
         );
     };
+    
     const handleDeleteProposal = async () => {
         if (!editData) return;
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Deleting proposal...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Deleting proposal...");
+        setShowStatus(true);
 
-            const response = await api.delete(`/proposals/${editData.id}`);
-
-            if (response.status === 204 || response.status === 200) {
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Proposal deleted successfully!");
-                
-                // Close the modal after successful deletion
-                setTimeout(() => {
-                    setShowStatus(false);
-                    onClose();
-                    onDelete(editData.id);
-                }, 2000);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
-                setResultMessage("Error deleting proposal");
+        deleteProposalMutation.mutate(
+            { proposalId: editData.id },
+            {
+                onSuccess: () => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Proposal deleted successfully!");
+                    
+                    // Close the modal after successful deletion
+                    setTimeout(() => {
+                        setShowStatus(false);
+                        onClose();
+                    }, 2000);
+                },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error deleting proposal, please try again");
+                    setTimeout(() => setShowStatus(false), 3000);
+                }
             }
-
-        } catch (error) {
-            console.error('Error deleting proposal:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error deleting proposal, please try again");
-        } finally {
-            if (!isSuccess) {
-                setTimeout(() => {
-                    setShowStatus(false);
-                }, 3000);
-            }
-        }
+        );
     };
 
-const confirmDeleteProposal = () => {
-    Alert.alert(
-        "Delete Proposal",
-        `Are you sure you want to delete "${editData?.title}"? This action cannot be undone.`,
-        [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: handleDeleteProposal }
-        ]
-    );
-};
+    const confirmDeleteProposal = () => {
+        Alert.alert(
+            "Delete Proposal",
+            `Are you sure you want to delete "${editData?.title}"? This action cannot be undone.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete", style: "destructive", onPress: handleDeleteProposal }
+            ]
+        );
+    };
 
     const handleCreateCrossCommitteeRequest = () => {
         setIsCreateCrossCommitteeModalVisible(true);
@@ -440,7 +371,22 @@ const confirmDeleteProposal = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                    <ScrollView 
+                    style={styles.modalContent} 
+                    keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isFetching}
+                            onRefresh={() => {
+                                fetchComments();
+                                fetchDocuments();
+                                fetchCrossCommittee();
+                            }}
+                            colors={['#E9435E']}
+                            tintColor="#E9435E"
+                        />
+                    }
+                    >
                         
                         {activeTab === 'proposal' ? (
                             <>
@@ -753,7 +699,6 @@ const confirmDeleteProposal = () => {
                                 )}
                             </>
                         ) : (
-                            // CROSS-COMMITTEE REQUESTS TAB
                             <>
                                 <View style={styles.sectionHeader}>
                                     <Text style={styles.sectionTitle}>Cross-Committee Requests</Text>
@@ -838,13 +783,33 @@ const confirmDeleteProposal = () => {
                 </View>
             )}
 
+    
+            {(loading) && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                        isLoading={true}
+                        isSuccess={false}
+                        loadingMessage="Loading proposal details..."
+                        resultMessage=""
+                    />
+                </View>
+            )}
+
+            {(hasError) && !showStatus && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                        isLoading={false}
+                        isSuccess={false}
+                        loadingMessage=""
+                        resultMessage="Error loading data. Pull to retry."
+                    />
+                </View>
+            )}
+
             <CreateCrossCommitteeRequestModal 
                 visible={isCreateCrossCommitteeModalVisible}
                 proposalId={editData.id}
                 onClose={() => setIsCreateCrossCommitteeModalVisible(false)} 
-                onUpdate={(newRequest: CrossCommitteeRequestType) => {      
-                    setCrossCommitteeRequests(prev => [newRequest, ...prev]);
-                }}
             />
 
             <CrossCommitteeRequestDetailsModal 

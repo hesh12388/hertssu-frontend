@@ -1,8 +1,9 @@
 import { useAuth } from '@/App';
+import { useAllProposals, useCrossCommitteeRequests, useMyProposals } from '@/src/hooks/useProposals';
 import { CrossCommitteeRequestType, ProposalType } from '@/src/types/Proposal';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavBar from '../../components/Navbar';
 import { StatusMessage } from '../../components/StatusMessage';
@@ -13,12 +14,7 @@ import ProposalDetailsModal from './ProposalDetailsModal';
 const Proposals = () => {
     const auth = useAuth();
     const permissions = usePermissions(auth?.user ?? null);
-    
-    const [myProposals, setMyProposals] = useState<ProposalType[]>([]);
-    const [assignedProposals, setAssignedProposals] = useState<ProposalType[]>([]);
-    const [allProposals, setAllProposals] = useState<ProposalType[]>([]);
-    const [crossCommitteeRequests, setCrossCommitteeRequests] = useState<CrossCommitteeRequestType[]>([]);
-    
+   
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     
     const [selectedProposal, setSelectedProposal] = useState<ProposalType | null>(null);
@@ -26,58 +22,36 @@ const Proposals = () => {
     const [selectedCrossCommitteeRequest, setSelectedCrossCommitteeRequest] = useState<CrossCommitteeRequestType | null>(null);
     const [showCrossCommitteeRequestDetails, setShowCrossCommitteeRequestDetails] = useState(false);
    
-    const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [statusMessage, setStatusMessage] = useState('');
-    const [resultMessage, setResultMessage] = useState('');
+   
+    const { 
+        data: myProposals = [], 
+        isLoading: isLoadingMy, 
+        error: errorMy,
+        refetch: refetchMy,
+        isFetching: isFetchingMyProposals
+    } = useMyProposals(permissions.showMyProposals);
 
-    useEffect(() => {
-        fetchProposals();
-    }, []);
+    const { 
+        data: allProposals = [], 
+        isLoading: isLoadingAll, 
+        error: errorAll,
+        refetch: refetchAll,
+        isFetching: isFetchingAllProposals
+    } = useAllProposals(permissions.showAllProposals);
 
-     const fetchProposals = async () => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Fetching proposals...");
-            
-            if (permissions.showMyProposals || permissions.showAssignedProposals) {
-                const proposalsResponse = await auth?.api.get('/proposals/my-proposals');
-                const proposalsData = proposalsResponse?.data || [];
-                
-                if (permissions.showMyProposals) {
-                    setMyProposals(proposalsData);
-                }
-                if (permissions.showAssignedProposals) {
-                    setAssignedProposals(proposalsData);
-                }
-            }
-            
-            if (permissions.showAllProposals) {
-                const allProposalsResponse = await auth?.api.get('/proposals/all');
-                setAllProposals(allProposalsResponse?.data || []);
-            }
-            
-            if (permissions.showCrossCommitteeRequests) {
-                const crossCommitteeResponse = await auth?.api.get('/proposals/cross-committee-requests/for-my-committee');
-                setCrossCommitteeRequests(crossCommitteeResponse?.data || []);
-            }
-            
-            setIsSuccess(true);
-            setIsLoading(false);
-            setResultMessage("Successfully fetched proposals!");
-        } catch (error) {
-            console.error('Error fetching proposals:', error);
-            setIsSuccess(false);
-            setIsLoading(false);
-            setResultMessage("Error fetching proposals!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
-    };
+    const { 
+        data: crossCommitteeRequests = [], 
+        isLoading: isLoadingCross, 
+        error: errorCross,
+        refetch: refetchCross ,
+        isFetching: isFetchingCrossCommitteeRequests
+    } = useCrossCommitteeRequests(permissions.showCrossCommitteeRequests);
+
+    const assignedProposals = myProposals;
+
+    const isLoading = isLoadingMy || isLoadingAll || isLoadingCross;
+    const hasError = errorMy || errorAll || errorCross;
+    const isFetching = isFetchingMyProposals || isFetchingAllProposals || isFetchingCrossCommitteeRequests;
 
     const getFilteredProposals = (proposals: ProposalType[], status: string) => {
         return proposals.filter(proposal => proposal.status === status);
@@ -131,16 +105,6 @@ const Proposals = () => {
             case 'PENDING_REVIEW': return '#FF9800';
             case 'COMPLETED': return '#4CAF50';
             default: return '#666';
-        }
-    };
-
-    const getCommitteeDisplayName = (committee: string) => {
-        switch (committee) {
-            case 'EVENTS': return 'Entertainment and Events';
-            case 'SPORTS': return 'Sports';
-            case 'PUBLIC_RELATIONS': return 'Public Relations';
-            case 'TREASURY': return 'Treasury';
-            default: return committee;
         }
     };
 
@@ -309,8 +273,22 @@ const Proposals = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-                <NavBar />
+            <NavBar />
+            <ScrollView 
+                keyboardShouldPersistTaps="handled"
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={isFetching} 
+                        onRefresh={() => {
+                            if (permissions.showMyProposals) refetchMy();
+                            if (permissions.showAllProposals) refetchAll();
+                            if (permissions.showCrossCommitteeRequests) refetchCross();
+                        }}
+                    tintColor="#E9435E"
+                    colors={["#E9435E"]}
+                    />
+                }
+            >
                 <View style={styles.header}>
                     <Text style={styles.headerText}>{getHeaderTitle()}</Text>
                     <View style={styles.headerRight}>
@@ -371,31 +349,12 @@ const Proposals = () => {
             <CreateProposalModal 
                 visible={isCreateModalVisible}
                 onClose={() => setIsCreateModalVisible(false)} 
-                onUpdate={(newProposal: ProposalType) => {      
-                    setAssignedProposals(prev => [newProposal, ...prev]);
-                }}
             />
 
             <ProposalDetailsModal 
                 visible={showProposalDetails}
                 selectedProposal={selectedProposal}
                 onClose={() => setShowProposalDetails(false)} 
-                onUpdate={(updatedProposal: ProposalType) => {      
-                   
-                    if (permissions.showMyProposals) {
-                        setMyProposals(prev => 
-                            prev.map(proposal => proposal.id === updatedProposal.id ? updatedProposal : proposal)
-                        );
-                    }
-                    if (permissions.showAssignedProposals) {
-                        setAssignedProposals(prev => 
-                            prev.map(proposal => proposal.id === updatedProposal.id ? updatedProposal : proposal)
-                        );
-                    }
-                }}
-                onDelete={(proposalId: number) => {
-                    setAssignedProposals(prev => prev.filter(proposal => proposal.id !== proposalId));
-                }}
             />
 
             <CrossCommitteeRequestDetailsModal 
@@ -404,13 +363,24 @@ const Proposals = () => {
                 onClose={() => setShowCrossCommitteeRequestDetails(false)} 
             />
 
-            {showStatus && (
+            {isLoading && !isCreateModalVisible && (
                 <View style={styles.statusOverlay}>
                     <StatusMessage 
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        loadingMessage={statusMessage}
-                        resultMessage={resultMessage}
+                    isLoading={true}
+                    isSuccess={false}
+                    loadingMessage="Loading proposals..."
+                    resultMessage=""
+                    />
+                </View>
+            )}
+
+            {hasError && !isCreateModalVisible && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                    isLoading={false}
+                    isSuccess={false}
+                    loadingMessage=""
+                    resultMessage="Error loading proposals. Pull to retry."
                     />
                 </View>
             )}
@@ -431,6 +401,12 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         zIndex: 1000, 
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     header: {
         flexDirection: "row",

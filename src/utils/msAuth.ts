@@ -36,7 +36,6 @@ export const loginWithMicrosoft = async () => {
     });
 
     if (result.type === 'success') {
-      console.log('Auth success, got code:', result.params.code);
       
       const tokens = await AuthSession.exchangeCodeAsync(
         {
@@ -51,7 +50,6 @@ export const loginWithMicrosoft = async () => {
         }
       );
       
-      console.log('Got tokens successfully');
       return tokens;
     } else {
       console.log('Auth cancelled or failed:', result);

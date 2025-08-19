@@ -1,8 +1,10 @@
 import { useAuth } from '@/App';
+import { usePermissions } from '@/src/hooks/usePermissions';
+import { useAssignedByMeTasks, useDeleteTask, useMyTasks } from '@/src/hooks/useTasks';
 import { TaskType, formatPriority, getAssigneeName, getAssignerName, getPriorityColor, getStatusColor } from '@/src/types/Task';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavBar from '../../components/Navbar';
 import { StatusMessage } from '../../components/StatusMessage';
@@ -15,54 +17,43 @@ const Tasks = () => {
     
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    const auth = useAuth();
+    const { user } = useAuth()!;
+    const {isMember} = usePermissions(user);
     
-    const [myTasks, setMyTasks] = useState<TaskType[]>([]);
-    const [assignedByMeTasks, setAssignedByMeTasks] = useState<TaskType[]>([]);
+    const { 
+        data:myTasks = [], 
+        isLoading: isMyTasksLoading, 
+        error: errorMyTasks, 
+        refetch: refetchMyTasks,
+        isFetching: isFetchingMyTasks
+    } = useMyTasks(showMyTasks);
+    
+    const { 
+        data:assignedByMeTasks = [], 
+        isLoading: isAssignedByMeLoading, 
+        error: errorAssignedByMe,
+        isFetching: isFetchingAssignedByMe,
+        refetch: refetchAssignedByMe 
+
+    } = useAssignedByMeTasks(!showMyTasks);
+
+    const deleteTaskMutation = useDeleteTask();
+
+
     const [selectedTask, setSelectedTask] = useState<TaskType | null>(null);
     const [showTaskDetails, setShowTaskDetails] = useState(false);
-
-    useEffect(() => {
-        fetchTasks();
-    }, []);
-
-    const fetchTasks = async () => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Fetching your tasks...");
-            
-            // Fetch both "assigned to me" and "assigned by me" tasks
-            const [myTasksResponse, assignedByMeResponse] = await Promise.all([
-                auth?.api.get('/tasks/assigned-to-me'),
-                auth?.api.get('/tasks/assigned-by-me')
-            ]);
-            
-            setMyTasks(myTasksResponse?.data || []);
-            setAssignedByMeTasks(assignedByMeResponse?.data || []);
-            setIsSuccess(true);
-            setIsLoading(false);
-            setResultMessage("Successfully fetched your tasks!");
-        } catch (error) {
-            console.error('Error fetching tasks:', error);
-            setIsSuccess(false);
-            setIsLoading(false);
-            setResultMessage("Error fetching your tasks!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
-    };
+ 
 
     const getFilteredTasks = (status: string) => {
+        if(showMyTasks && !myTasks) return [];
+        if(!showMyTasks && !assignedByMeTasks) return [];
         const currentTasks = showMyTasks ? myTasks : assignedByMeTasks;
-        return currentTasks.filter(task => task.status === status);
+        return currentTasks!.filter(task => task.status === status);
     };
 
     const confirmDeleteTask = (task: TaskType) => {
@@ -84,29 +75,24 @@ const Tasks = () => {
     };
 
     const deleteTask = async (taskId: number) => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Deleting task...");
+        setIsLoading(true);
+        setShowStatus(true);
+        setStatusMessage("Deleting task...");
 
-            await auth?.api.delete(`/tasks/${taskId}`);
-            
-            
-            setAssignedByMeTasks(prev => prev.filter(task => task.id !== taskId));
-            
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("Task deleted successfully!");
-        } catch (error) {
-            console.error('Error deleting task:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error deleting task!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
+        deleteTaskMutation.mutate({ taskId }, {
+            onSuccess: () => {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("Task deleted successfully!");
+                setTimeout(() => setShowStatus(false), 2500);
+            },
+            onError: () => {
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error deleting task!");
+                setTimeout(() => setShowStatus(false), 2500);
+            }
+        });
     };
 
     const handleCreateTask = () => {
@@ -147,9 +133,35 @@ const Tasks = () => {
         setShowTaskDetails(true);
     };
 
+
+
     const renderTaskItem = ({ item }: { item: TaskType }) => {
         const dueInfo = formatDueDate(item.dueDate);
         const canDelete = !showMyTasks && item.status !== 'COMPLETED';
+
+        const getSubmissionStatus = (): { text: string; color: string; icon: "warning-outline" | "checkmark-circle" } | null => {
+            if (item.status === 'COMPLETED' && item.submittedAt) {
+            const dueDate = new Date(item.dueDate);
+            const submittedDate = new Date(item.submittedAt);
+            
+            if (submittedDate > dueDate) {
+                return {
+                text: 'Submitted Late',
+                color: '#FF9800',
+                icon: 'warning-outline'
+                };
+            } else {
+                return {
+                text: 'Submitted',
+                color: '#4CAF50',
+                icon: 'checkmark-circle'
+                };
+            }
+            }
+            return null;
+        };
+
+        const submissionStatus = getSubmissionStatus();
 
         return (
             <TouchableOpacity 
@@ -173,15 +185,14 @@ const Tasks = () => {
                 
                 <View style={styles.cardFooter}>
                    
-                    {item.status === 'COMPLETED' ? (
+                    {submissionStatus ? (
                         <View style={styles.dueDateContainer}>
-                            <Ionicons name="checkmark-circle" size={16} color="green" />
-                            <Text style={[styles.dueDateText, { color: "green" }]}>
-                                Submitted
+                            <Ionicons name={submissionStatus.icon} size={16} color={submissionStatus.color} />
+                            <Text style={[styles.dueDateText, { color: submissionStatus.color }]}>
+                                {submissionStatus.text}
                             </Text>
                         </View>
-                    ): 
-                    (
+                    ) : (
                         <View style={styles.dueDateContainer}>
                             <Ionicons name="time-outline" size={16} color={dueInfo.color} />
                             <Text style={[styles.dueDateText, { color: dueInfo.color }]}>
@@ -236,17 +247,29 @@ const Tasks = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-                <NavBar />
+            <NavBar />
+            <ScrollView 
+            keyboardShouldPersistTaps="handled" 
+            refreshControl={
+                <RefreshControl 
+                    refreshing={isFetchingAssignedByMe || isFetchingMyTasks}
+                    onRefresh={() => {
+                        if (showMyTasks) refetchMyTasks();
+                        else refetchAssignedByMe();
+                    }}
+                />
+            }>
                 <View style={styles.header}>
                     <Text style={styles.headerText}>
                         {showMyTasks ? "My Tasks" : "Assigned By Me"}
                     </Text>
-                    <View style={styles.headerRight}>
-                        <TouchableOpacity onPress={handleCreateTask}>
-                            <Ionicons name="add-circle-outline" size={34} color='#E9435E' />
-                        </TouchableOpacity>
-                    </View>
+                    {!isMember && (
+                         <View style={styles.headerRight}>
+                            <TouchableOpacity onPress={handleCreateTask}>
+                                <Ionicons name="add-circle-outline" size={34} color='#E9435E' />
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
                 {/* Tab Toggle */}
@@ -278,34 +301,46 @@ const Tasks = () => {
             {showStatus && !isCreateModalVisible && (
                 <View style={styles.statusOverlay}>
                     <StatusMessage 
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        loadingMessage={statusMessage}
-                        resultMessage={resultMessage}
+                    isLoading={loading}
+                    isSuccess={isSuccess}
+                    loadingMessage={statusMessage}
+                    resultMessage={resultMessage}
                     />
                 </View>
             )}
 
+            {(isMyTasksLoading || isAssignedByMeLoading) && !isCreateModalVisible && !showStatus && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                    isLoading={true}
+                    isSuccess={false}
+                    loadingMessage="Loading tasks..."
+                    resultMessage=""
+                    />
+                </View>
+            )}
+
+            {(errorMyTasks || errorAssignedByMe)&& !isCreateModalVisible && !showStatus && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                    isLoading={false}
+                    isSuccess={false}
+                    loadingMessage=""
+                    resultMessage="Error loading data. Pull to retry."
+                    />
+                </View>
+            )}
+
+
             <CreateTaskModal 
                 visible={isCreateModalVisible}
                 onClose={() => setIsCreateModalVisible(false)} 
-                onUpdate={(newTask: TaskType) => {      
-                    setAssignedByMeTasks(prev => [newTask, ...prev]);
-                }}
             />
             
             <TaskDetailsModal 
                 visible={showTaskDetails}
                 selectedTask={selectedTask}
                 onClose={() => setShowTaskDetails(false)} 
-                onUpdate={(updatedTask: TaskType) => {      
-                    setMyTasks(prev => 
-                        prev.map(task => task.id === updatedTask.id ? updatedTask : task)
-                    );
-                    setAssignedByMeTasks(prev => 
-                        prev.map(task => task.id === updatedTask.id ? updatedTask : task)
-                    );
-                }}
             />
         </SafeAreaView>
     );
@@ -315,6 +350,12 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#fff',
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     statusOverlay: {
         position: 'absolute',

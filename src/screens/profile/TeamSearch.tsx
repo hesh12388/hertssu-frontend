@@ -216,7 +216,7 @@ const TeamSearch = () => {
             )}
 
             {error && (
-                <View style={styles.statusOverlay}>
+                <View style={styles.errorContainer}>
                     <StatusMessage 
                         isLoading={false}
                         isSuccess={false}
@@ -224,17 +224,6 @@ const TeamSearch = () => {
                         resultMessage="Error loading team members!"
                     />
                 </View>
-            )}
-
-            {selectedUserId && (
-                <UserProfileModal 
-                    visible={isProfileModalVisible}
-                    userId={selectedUserId}
-                    onClose={() => {
-                        setIsProfileModalVisible(false);
-                        setSelectedUserId(null);
-                    }}
-                />
             )}
 
             {selectedUserId && (
@@ -255,6 +244,12 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#fff',
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     statusOverlay: {
         position: 'absolute',

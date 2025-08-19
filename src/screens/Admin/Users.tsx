@@ -1,68 +1,46 @@
-import { useAuth } from '@/App';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavBar from '../../components/Navbar';
 import { StatusMessage } from '../../components/StatusMessage';
 import CreateUserModal from './CreateUserModal';
 
+import { useAccountRequests, useCreateUserFromRequest, useDeleteUser, useRejectAccountRequest, useUsers } from '@/src/hooks/useUsers';
 import { AccountRequestDTO, UserType } from '../../types/User';
 
 const Users = () => {
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [expandedCommittees, setExpandedCommittees] = useState<Set<string>>(new Set());
-    const [accountRequests, setAccountRequests] = useState<AccountRequestDTO[]>([]);
+
     
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    const auth = useAuth();
-    
-    const [users, setUsers] = useState<UserType[]>([]);
+    const deleteUserMutation = useDeleteUser();
+    const createUserFromRequestMutation = useCreateUserFromRequest();
+    const rejectRequestMutation = useRejectAccountRequest();
 
-    useEffect(() => {
-        fetchUsers();
-        fetchAccountRequests();
-    }, []);
+    const { 
+        data: users = [], 
+        isLoading: isLoadingUsers,
+        error: errorUsers, 
+        refetch: refetchUsers,
+        isFetching: isFetchingUsers
+    } = useUsers();
 
-    const fetchUsers = async () => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Fetching users...");
-            
-            const response = await auth?.api.get('/users');
-            
-            setUsers(response?.data || []);
-            setIsSuccess(true);
-            setIsLoading(false);
-            setResultMessage("Successfully fetched users!");
-        } catch (error) {
-            console.error('Error fetching users:', error);
-            setIsSuccess(false);
-            setIsLoading(false);
-            setResultMessage("Error fetching users!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
-    };
-
-    const fetchAccountRequests = async () => {
-        try {
-            const response = await auth?.api.get('/users/account-requests');
-            setAccountRequests(response?.data || []);
-        } catch (error) {
-            console.error('Error fetching account requests:', error);
-        }
-    };
+    const { 
+        data: accountRequests = [],
+        isLoading: isLoadingAccountRequests,
+        error: errorAccountRequests,
+        refetch: refetchAccountRequests,
+        isFetching: isFetchingAccountRequests
+    } = useAccountRequests();
 
     const confirmDeleteUser = (user: UserType) => {
         Alert.alert(
@@ -83,72 +61,45 @@ const Users = () => {
     };
 
     const deleteUser = async (userId: number) => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Deleting user...");
+        setIsLoading(true);
+        setShowStatus(true);
+        setStatusMessage("Deleting user...");
 
-            await auth?.api.delete(`/users/${userId}`);
-            
-            setUsers(prev => prev.filter(user => user.id !== userId));
-            
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("User deleted successfully!");
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error deleting user!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
+        deleteUserMutation.mutate({ userId }, {
+            onSuccess: () => {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("User deleted successfully!");
+                setTimeout(() => setShowStatus(false), 2500);
+            },
+            onError: () => {
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error deleting user!");
+                setTimeout(() => setShowStatus(false), 2500);
+            }
+        });
     };
 
     const handleCreateUserFromRequest = async (request: AccountRequestDTO) => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Creating user from request...");
+        setIsLoading(true);
+        setShowStatus(true);
+        setStatusMessage("Creating user from request...");
 
-            const createUserData = {
-                email: request.email,
-                password: "TempPassword123!",
-                firstName: request.firstName,
-                lastName: request.lastName,
-                role: request.role,
-                committeeId: request.committeeId,
-                subcommitteeId: request.subcommitteeId || null
-            };
-
-            // Create user
-            const userResponse = await auth?.api.post('/users', createUserData);
-            
-            if (!userResponse || !userResponse.data) {
-                throw new Error("Failed to create user from request");
+        createUserFromRequestMutation.mutate({ request }, {
+            onSuccess: () => {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("User created successfully from request!");
+                setTimeout(() => setShowStatus(false), 2500);
+            },
+            onError: () => {
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error creating user from request!");
+                setTimeout(() => setShowStatus(false), 2500);
             }
-            // Delete account request
-            await auth?.api.delete(`/users/account-requests/${request.id}`);
-
-            // Update state
-            setUsers(prev => [userResponse.data, ...prev]);
-            setAccountRequests(prev => prev.filter(req => req.id !== request.id));
-            
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("User created successfully from request!");
-        } catch (error) {
-            console.error('Error creating user from request:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error creating user from request!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
+        });
     };
 
     const handleRejectRequest = async (requestId: number) => {
@@ -160,14 +111,25 @@ const Users = () => {
                 {
                     text: "Reject",
                     style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await auth?.api.delete(`/users/account-requests/${requestId}`);
-                            setAccountRequests(prev => prev.filter(req => req.id !== requestId));
-                        } catch (error) {
-                            console.error('Error rejecting request:', error);
-                            Alert.alert('Error', 'Failed to reject request');
-                        }
+                    onPress: () => {
+                        setIsLoading(true);
+                        setShowStatus(true);
+                        setStatusMessage("Rejecting request...");
+
+                        rejectRequestMutation.mutate({ requestId }, {
+                            onSuccess: () => {
+                                setIsLoading(false);
+                                setIsSuccess(true);
+                                setResultMessage("Request rejected successfully!");
+                                setTimeout(() => setShowStatus(false), 2500);
+                            },
+                            onError: () => {
+                                setIsLoading(false);
+                                setIsSuccess(false);
+                                setResultMessage("Error rejecting request!");
+                                setTimeout(() => setShowStatus(false), 2500);
+                            }
+                        });
                     }
                 }
             ]
@@ -315,8 +277,21 @@ const Users = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-                <NavBar />
+            <NavBar />
+            <ScrollView 
+                keyboardShouldPersistTaps="handled"
+                refreshControl={
+                    <RefreshControl 
+                    refreshing={(isFetchingAccountRequests || isFetchingUsers)} 
+                    onRefresh={() => {
+                        refetchUsers();
+                        refetchAccountRequests();
+                    }}
+                    tintColor="#E9435E"
+                    colors={["#E9435E"]}
+                    />
+                }
+                >
                 <View style={styles.header}>
                     <Text style={styles.headerText}>User Management</Text>
                     <View style={styles.headerRight}>
@@ -435,10 +410,32 @@ const Users = () => {
             {showStatus && !isCreateModalVisible && (
                 <View style={styles.statusOverlay}>
                     <StatusMessage 
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        loadingMessage={statusMessage}
-                        resultMessage={resultMessage}
+                    isLoading={loading}
+                    isSuccess={isSuccess}
+                    loadingMessage={statusMessage}
+                    resultMessage={resultMessage}
+                    />
+                </View>
+            )}
+
+            {(isLoadingUsers || isLoadingAccountRequests )&& !isCreateModalVisible && !showStatus && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                    isLoading={true}
+                    isSuccess={false}
+                    loadingMessage="Loading users..."
+                    resultMessage=""
+                    />
+                </View>
+            )}
+
+            {(errorUsers || errorAccountRequests) && !isCreateModalVisible && !showStatus && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                    isLoading={false}
+                    isSuccess={false}
+                    loadingMessage=""
+                    resultMessage="Error loading data. Pull to retry."
                     />
                 </View>
             )}
@@ -446,9 +443,6 @@ const Users = () => {
             <CreateUserModal 
                 visible={isCreateModalVisible}
                 onClose={() => setIsCreateModalVisible(false)} 
-                onUpdate={(newUser: UserType) => {      
-                    setUsers(prev => [newUser, ...prev]);
-                }}
             />
         </SafeAreaView>
     );
@@ -458,6 +452,12 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#fff',
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     statusOverlay: {
         position: 'absolute',

@@ -1,9 +1,11 @@
 import { useAuth } from '@/App';
+import { useAddTaskComment, useDeleteTaskComment, useDeleteTaskDocument, useTaskComments, useTaskDocuments, useUploadTaskDocument } from '@/src/hooks/useTaskDetails';
+import { useUpdateTask, useUpdateTaskStatus } from '@/src/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosInstance } from 'axios';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,71 +16,56 @@ const TaskDetailsModal = ({
     visible,
     selectedTask,
     onClose,
-    onUpdate
 }: {
     selectedTask: TaskType | null;
     visible: boolean;
     onClose: () => void;
-    onUpdate: (task: TaskType) => void;
 }) => {
     const [editData, setEditData] = useState<TaskType | null>(null);
     const [isEditCalendarVisible, setIsEditCalendarVisible] = useState(false);
-    const [comments, setComments] = useState<TaskCommentType[]>([]);
-    const [documents, setDocuments] = useState<TaskDocumentType[]>([]);
     const [newComment, setNewComment] = useState('');
-    
-    const auth = useAuth()!;
-    const { api }: { api: AxiosInstance } = useAuth()!;
-    
-    // Status message state
+
     const [showStatus, setShowStatus] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
-
-        
-    const fetchComments = async () => {
-        try {
-            const response = await api.get(`/tasks/${selectedTask!.id}/comments`);
-            setComments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching comments:', error);
-        }
-    };
-
-    const fetchDocuments = async () => {
-        try {
-            const response = await api.get(`/tasks/${selectedTask!.id}/documents`);
-            setDocuments(response.data || []);
-        } catch (error) {
-            console.error('Error fetching documents:', error);
-        }
-    };
-
-    useEffect(() => {
-        if (selectedTask) {
-            setEditData({ ...selectedTask });
-            fetchComments();
-            fetchDocuments();
-        }
-    }, [selectedTask]);
-
+    
+    const auth = useAuth()!;
+    const { api }: { api: AxiosInstance } = useAuth()!;
+    
     if (!visible) return null;         
     if (!selectedTask) return null;      
     if (!editData) return null;  
 
+    // Status message state
+    const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: commentsRefetch} = useTaskComments(selectedTask?.id);
+    const { data: documents = [], isLoading: documentsLoading, error: documentsError, isFetching: documentsFetching, refetch: documentsRefetch } = useTaskDocuments(selectedTask?.id);
+
+    const updateTaskMutation = useUpdateTask();
+    const updateStatusMutation = useUpdateTaskStatus();
+    const addCommentMutation = useAddTaskComment();
+    const deleteCommentMutation = useDeleteTaskComment();
+    const uploadDocumentMutation = useUploadTaskDocument();
+    const deleteDocumentMutation = useDeleteTaskDocument();
+
+
+    useEffect(() => {
+        if (selectedTask) {
+            setEditData({ ...selectedTask });
+        }
+    }, [selectedTask]);
     
 
     const updateEditData = (field: string, value: any) => {
         setEditData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                [field]: value
-            };
-        });
-    };
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    [field]: value
+                };
+            });
+        };
 
     const handleUpdateTask = async () => {
         if (!editData) return;
@@ -87,108 +74,83 @@ const TaskDetailsModal = ({
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Updating task...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Updating task...");
+        setShowStatus(true);
 
-            const requestBody = {
-                title: editData.title,
-                description: editData.description,
-                dueDate: editData.dueDate,
-                priority: editData.priority
-            };
+        const requestBody = {
+            title: editData.title,
+            description: editData.description,
+            dueDate: editData.dueDate,
+            priority: editData.priority
+        };
 
-            const response = await api.put(`/tasks/${editData.id}`, requestBody);
-
-            if (response.status === 200) {
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Task updated successfully!");
-                onUpdate(response.data);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
-            }
-
-        } catch (error) {
-            console.error('Error updating task:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error updating task, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                if (isSuccess) {
-                    onClose();
+        updateTaskMutation.mutate(
+            { taskId: editData.id, data: requestBody },
+            {
+                onSuccess: (updatedTask) => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Task updated successfully!");
+                    setEditData(updatedTask);
+                    setTimeout(() => {
+                        setShowStatus(false);
+                        onClose();
+                    }, 3000);
+                },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error updating task, please try again");
+                    setTimeout(() => setShowStatus(false), 3000);
                 }
-            }, 3000);
-        }
+            }
+        );
     };
 
     const handleStatusChange = async (newStatus: string) => {
         if (!editData) return;
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Updating status...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Updating status...");
+        setShowStatus(true);
 
-            const response = await api.patch(`/tasks/${editData.id}/status`, { status: newStatus });
-
-            if (response.status === 200) {
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Status updated successfully!");
-                const updatedTask: TaskType = response.data;
-                setEditData(updatedTask);
-                onUpdate(updatedTask);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
+        updateStatusMutation.mutate(
+            { taskId: editData.id, status: newStatus },
+            {
+                onSuccess: (updatedTask) => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Status updated successfully!");
+                    setEditData(updatedTask);
+                    setTimeout(() => setShowStatus(false), 2000);
+                },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error updating status, please try again");
+                    setTimeout(() => setShowStatus(false), 2000);
+                }
             }
-
-        } catch (error) {
-            console.error('Error updating status:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error updating status, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2000);
-        }
+        );
     };
 
  
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
-
-        try {
-            const response = await api.post(`/tasks/${editData!.id}/comments`, {
-                content: newComment
-            });
-
-            if (response.status === 201 || response.status === 200) {
-                setComments(prev => [response.data, ...prev]);
-                setNewComment('');
-            }
-
-        } catch (error) {
-            console.error('Error adding comment:', error);
-            Alert.alert('Error', 'Failed to add comment');
-        }
+        addCommentMutation.mutate({
+            taskId: editData!.id,
+            content: newComment
+        });
+        setNewComment('');
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        try {
-            await api.delete(`/tasks/comments/${commentId}`);
-            setComments(prev => prev.filter(comment => comment.id !== commentId));
-        } catch (error) {
-            console.error('Error deleting comment:', error);
-            Alert.alert('Error', 'Failed to delete comment');
-        }
+        deleteCommentMutation.mutate({
+            commentId,
+            taskId: editData!.id
+        });
     };
 
     const confirmDeleteComment = (comment: TaskCommentType) => {
@@ -258,22 +220,24 @@ const TaskDetailsModal = ({
                 uri: file.uri
             });
 
-            // Upload with progress tracking
-            const response = await api.post(`/tasks/${editData!.id}/documents`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
+    
+            uploadDocumentMutation.mutate({
+                taskId: editData!.id,
+                formData
+            }, {
+                onSuccess: () => {
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage(`${file.name} uploaded successfully!`);
+                    setTimeout(() => setShowStatus(false), 3000);
                 },
+                onError: () => {
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage('Failed to upload document. Please try again.');
+                    setTimeout(() => setShowStatus(false), 3000);
+                }
             });
-
-            if (response.status === 201 || response.status === 200) {
-                setDocuments(prev => [response.data, ...prev]);
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage(`${file.name} uploaded successfully!`);
-                console.log('Document uploaded successfully:', response.data);
-            } else {
-                throw new Error('Upload failed');
-            }
 
         } catch (error) {
             console.error('Error uploading document:', error);
@@ -289,13 +253,10 @@ const TaskDetailsModal = ({
     };
 
     const handleDeleteDocument = async (documentId: string) => {
-        try {
-            await api.delete(`/tasks/documents/${documentId}`);
-            setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-        } catch (error) {
-            console.error('Error deleting document:', error);
-            Alert.alert('Error', 'Failed to delete document');
-        }
+        deleteDocumentMutation.mutate({
+            documentId,
+            taskId: editData!.id
+        });
     };
 
     const confirmDeleteDocument = (document: TaskDocumentType) => {
@@ -309,7 +270,6 @@ const TaskDetailsModal = ({
         );
     };
 
-    
 
     const PRIORITY_OPTIONS = [
         { label: 'Low', value: 'LOW' },
@@ -344,7 +304,19 @@ const TaskDetailsModal = ({
                         <Text style={styles.modalTitle}>Task Details</Text>
                     </View>
 
-                    <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                    <ScrollView 
+                        style={styles.modalContent} 
+                        keyboardShouldPersistTaps="handled"
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={commentsFetching || documentsFetching}
+                                onRefresh={() => {  
+                                    commentsRefetch();
+                                    documentsRefetch();
+                                }}
+                            />
+                        }
+                    >
 
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Task Information</Text>
@@ -636,14 +608,34 @@ const TaskDetailsModal = ({
                 </KeyboardAvoidingView>
             </SafeAreaView>
             {showStatus && (
-                        <View style={styles.statusOverlay}>
-                            <StatusMessage 
-                                isLoading={isLoading}
-                                isSuccess={isSuccess}
-                                loadingMessage={statusMessage}
-                                resultMessage={resultMessage}
-                            />
-                        </View>
+                    <View style={styles.statusOverlay}>
+                        <StatusMessage 
+                            isLoading={isLoading}
+                            isSuccess={isSuccess}
+                            loadingMessage={statusMessage}
+                            resultMessage={resultMessage}
+                        />
+                    </View>
+            )}
+            {(commentsLoading || documentsLoading) && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                        isLoading={true}
+                        isSuccess={false}
+                        loadingMessage={"Loading comments and documents..."}
+                        resultMessage={""}
+                    />
+                </View>
+            )}
+            {(commentsError || documentsError) && (
+                    <View style={styles.errorContainer}>
+                        <StatusMessage 
+                            isLoading={false}
+                            isSuccess={false}
+                            loadingMessage={""}
+                            resultMessage={"Error loading comments or documents. Please try again."}
+                        />
+                    </View>
             )}
         </Modal>
     );
@@ -653,6 +645,12 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     container: {
         flex: 1,

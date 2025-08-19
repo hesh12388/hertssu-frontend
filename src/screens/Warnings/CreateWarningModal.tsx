@@ -1,20 +1,19 @@
-import { useAuth } from '@/App';
 import { Ionicons } from '@expo/vector-icons';
-import { AxiosInstance } from 'axios';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
 import { UserType } from '../../types/User';
 
-import { WarningRequest, WarningResponse } from '../../types/Warning';
+import { useUsers } from '@/src/hooks/useUsers';
+import { useCreateWarning } from '@/src/hooks/useWarnings';
+import { WarningRequest } from '../../types/Warning';
 const CreateWarningModal = ({ visible, onClose, onUpdate }: {
     visible: boolean;
     onClose: () => void;
-    onUpdate: (warning: WarningResponse) => void;
+    onUpdate: () => void;
 }) => {
-    const { api }: { api: AxiosInstance } = useAuth()!;
-    const [users, setUsers] = useState<UserType[]>([]);
+    
     const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
     const [userSearchText, setUserSearchText] = useState('');
     
@@ -27,18 +26,36 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
     
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [loading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
+    const {
+        mutate: createWarningMutate,
+    } = useCreateWarning();
+
+    const {
+        data: users = [],
+        isLoading,
+        error,
+        refetch,
+        isFetching
+    } = useUsers();
+  
     useEffect(() => {
-        if (visible) {
-            fetchUsers();
+        if (!users || users.length === 0) {
+            setFilteredUsers([]);
+            return;
         }
-    }, [visible]);
+        setFilteredUsers(users);
+    }, [users]);
 
     useEffect(() => {
+        if (!users || users.length === 0) {
+            setFilteredUsers([]);
+            return;
+        }
         // Filter users based on search text
         if (userSearchText.trim()) {
             const searchLower = userSearchText.toLowerCase();
@@ -53,32 +70,7 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
         } else {
             setFilteredUsers(users);
         }
-    }, [userSearchText]);
-
-    const fetchUsers = async () => {
-        try {
-            setIsLoading(true);
-            setStatusMessage("Loading users...");
-            setShowStatus(true);
-            
-            const response = await api.get('/users');
-            setUsers(response?.data || []);
-            setFilteredUsers(response?.data || []);
-            
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("Users loaded successfully!");
-        } catch (error) {
-            console.error('Error fetching users:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error loading users!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2000);
-        }
-    };
+    }, [userSearchText, users]);
 
     const updateFormData = (field: keyof WarningRequest, value: any) => {
         setFormData(prev => ({
@@ -99,71 +91,59 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
         onClose();
     };
 
-    const handleCreateWarning = async () => {
+    const handleCreateWarning = () => {
         if (!formData.assigneeId || !formData.reason.trim()) {
             Alert.alert('Error', 'Please select a user and provide a reason for the warning');
             return;
         }
-
         if (formData.reason.length > 1000) {
             Alert.alert('Error', 'Reason cannot exceed 1000 characters');
             return;
         }
-
         if (formData.actionTaken && formData.actionTaken.length > 500) {
             Alert.alert('Error', 'Action taken cannot exceed 500 characters');
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Creating warning...");
-            setShowStatus(true);
+        const requestBody = {
+            assigneeId: formData.assigneeId,
+            reason: formData.reason.trim(),
+            actionTaken: formData.actionTaken?.trim() || null,
+            severity: formData.severity,
+        };
 
-            const requestBody = {
-                assigneeId: formData.assigneeId,
-                reason: formData.reason.trim(),
-                actionTaken: formData.actionTaken?.trim() || null,
-                severity: formData.severity
-            };
+        console.log('Creating warning with data:', requestBody);
 
-            console.log('Creating warning with data:', requestBody);
+        setIsLoading(true);
+        setStatusMessage("Creating warning...");
+        setShowStatus(true);
 
-            const response = await api.post('/warnings', requestBody);
+        createWarningMutate(requestBody, {
+                onSuccess: (newWarning) => {
+                    console.log('Warning created successfully:', newWarning);
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Warning created successfully!");
+                    setTimeout(() => {
+                        setShowStatus(false);
+                        handleCloseModal();
+                    }, 3000);
+                },
+                onError: (error: any) => {
+                    console.error('Error creating warning:', error);
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error creating warning, please try again");
+                    setTimeout(() => {
+                        setShowStatus(false);
+                    }, 3000);
+                },
+                onSettled: () => {
 
-            if (response.status === 201 || response.status === 200) {
-                console.log('Warning created successfully:', response.data);
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Warning created successfully!");
-                const newWarning = response.data;
-                onUpdate(newWarning);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
-                setResultMessage("Error creating warning");
-            }
-
-        } catch (error: any) {
-            console.error('Error creating warning:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            
-            // Handle specific error messages
-            if (error.response?.data?.message) {
-                setResultMessage(error.response.data.message);
-            } else {
-                setResultMessage("Error creating warning, please try again");
-            }
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                if (isSuccess) {
-                    handleCloseModal();
                 }
-            }, 3000);
-        }
+            });
     };
+
 
     const SEVERITY_OPTIONS = [
         { label: 'Low', value: 'LOW' },
@@ -175,7 +155,7 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
     const getUserOptions = () => {
         return filteredUsers.map(user => ({
             label: `${user.firstName} ${user.lastName} - ${user.committeeName}${user.subcommitteeName ? ` (${user.subcommitteeName})` : ''}`,
-            value: user.id.toString()
+            value: user.id
         }));
     };
 
@@ -194,6 +174,8 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
         return colors[severity] || '#27AE60';
     };
 
+    const creatingDisabled = showStatus || loading || isLoading || users.length === 0;
+
     return (
         <Modal
             visible={visible}
@@ -204,21 +186,32 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
             <SafeAreaView style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
                     <TouchableOpacity 
-                        onPress={showStatus ? () => {} : handleCloseModal} 
-                        disabled={showStatus}
+                        onPress={creatingDisabled ? () => {} : handleCloseModal} 
+                        disabled={creatingDisabled}
                     >
                         <Ionicons name="close" size={24} color={showStatus ? "#ccc" : "#666"} />
                     </TouchableOpacity>
                     <Text style={styles.modalTitle}>Create Warning</Text>
                     <TouchableOpacity 
-                        onPress={showStatus ? undefined : handleCreateWarning} 
-                        disabled={showStatus}
+                        onPress={creatingDisabled ? undefined : handleCreateWarning} 
+                        disabled={creatingDisabled}
                     >
-                        <Text style={[styles.saveButton, showStatus && styles.disabledText]}>Create</Text>
+                        <Text style={[styles.saveButton, creatingDisabled && styles.disabledText]}>Create</Text>
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <ScrollView 
+                    style={styles.modalContent} 
+                    keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isFetching}
+                            onRefresh={refetch}
+                            colors={['#E9435E']}
+                            tintColor="#E9435E"
+                        />
+                    }
+                >
                     
                     {/* User Selection */}
                     <View style={styles.inputGroup}>
@@ -251,9 +244,9 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
 
                         <View style={styles.pickerContainer}>
                             <RNPickerSelect
-                                onValueChange={(value) => updateFormData('assigneeId', parseInt(value))}
+                                onValueChange={(value) => updateFormData('assigneeId', value)}
                                 items={getUserOptions()}
-                                value={formData.assigneeId.toString()}
+                                value={formData.assigneeId}
                                 placeholder={{ label: "Select user to warn...", value: "0" }}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
@@ -336,10 +329,31 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
                 {showStatus && (
                     <View style={styles.statusOverlay}>
                         <StatusMessage 
-                            isLoading={isLoading}
+                            isLoading={loading}
                             isSuccess={isSuccess}
                             loadingMessage={statusMessage}
                             resultMessage={resultMessage}
+                        />
+                    </View>
+                )}
+
+                {isLoading && (
+                    <View style={styles.statusOverlay}>
+                        <StatusMessage 
+                            isLoading={true}
+                            isSuccess={false}
+                            loadingMessage={"Loading users..."}
+                            resultMessage={""}
+                        />
+                    </View>
+                )}
+                {error && (
+                    <View style={styles.errorContainer}>
+                        <StatusMessage 
+                            isLoading={false}
+                            isSuccess={false}
+                            loadingMessage={""}
+                            resultMessage={"Error loading users"}
                         />
                     </View>
                 )}
@@ -352,6 +366,12 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

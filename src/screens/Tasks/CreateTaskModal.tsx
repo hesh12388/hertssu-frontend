@@ -1,21 +1,21 @@
 import { useAuth } from '@/App';
+import { useCreateTask } from '@/src/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { AxiosInstance } from 'axios';
-import React, { useEffect, useState } from 'react';
-import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
-import { AssignableUserType, getFullName, TaskType } from '../../types/Task';
+import { AssignableUserType, getFullName } from '../../types/Task';
 
-const CreateTaskModal = ({ visible, onClose, onUpdate }: {
+const CreateTaskModal = ({ visible, onClose}: {
     visible: boolean;
     onClose: () => void;
-    onUpdate: (task: TaskType) => void;
 }) => {
     const { api }: { api: AxiosInstance } = useAuth()!;
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
-    const [assignableUsers, setAssignableUsers] = useState<AssignableUserType[]>([]);
     const [userSearchText, setUserSearchText] = useState('');
     
     const [formData, setFormData] = useState({
@@ -33,21 +33,24 @@ const CreateTaskModal = ({ visible, onClose, onUpdate }: {
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    useEffect(() => {
-        if (visible) {
-            fetchAssignableUsers();
-        }
-    }, [visible]);
+    const createTaskMutation = useCreateTask();
 
-    const fetchAssignableUsers = async () => {
-        try {
+    const { 
+        data: assignableUsers = [], 
+        isLoading: loadingUsers, 
+        error: errorUsers, 
+        refetch: refetchUsers,
+        isFetching: isFetchingUsers
+    } = useQuery({
+        queryKey: ['assignableUsers'],
+        queryFn: async (): Promise<AssignableUserType[]>=> {
             const response = await api.get('/users/assignable');
-            setAssignableUsers(response.data || []);
-        } catch (error) {
-            console.error('Error fetching assignable users:', error);
-            Alert.alert('Error', 'Failed to fetch users. Please try again.');
-        }
-    };
+            return response.data || [];
+        },
+        staleTime: 10 * 60 * 1000,
+    });
+
+    
 
     const updateFormData = (field: string, value: any) => {
         setFormData(prev => ({
@@ -76,49 +79,44 @@ const CreateTaskModal = ({ visible, onClose, onUpdate }: {
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Creating your task...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Creating your task...");
+        setShowStatus(true);
 
-            const requestBody = {
-                title: formData.title,
-                description: formData.description,
-                assigneeId: parseInt(formData.assigneeId),
-                dueDate: formData.dueDate,
-                priority: formData.priority
-            };
+        const requestBody = {
+            title: formData.title,
+            description: formData.description,
+            assigneeId: parseInt(formData.assigneeId),
+            dueDate: formData.dueDate,
+            priority: formData.priority
+        };
 
-            console.log('Creating task with data:', requestBody);
+        console.log('Creating task with data:', requestBody);
 
-            const response = await api.post('/tasks', requestBody);
-
-            if (response.status === 201 || response.status === 200) {
-                console.log('Task created successfully:', response.data);
+        createTaskMutation.mutate(requestBody, {
+            onSuccess: (newTask) => {
+                console.log('Task created successfully:', newTask);
                 setIsLoading(false);
                 setIsSuccess(true);
                 setResultMessage("Task created successfully!");
-                const newTask = response.data;
-                onUpdate(newTask);
-            } else {
+                
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
+            },
+            onError: () => {
+                console.error('Error creating task');
                 setIsLoading(false);
                 setIsSuccess(false);
-                setResultMessage("Error creating task");
+                setResultMessage("Error creating task, please try again");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
             }
-
-        } catch (error) {
-            console.error('Error creating task:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error creating task, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                handleCloseModal();
-            }, 3000);
-        }
+        });
     };
-
     const getFilteredUsers = () => {
         if (!userSearchText) return assignableUsers;
         
@@ -158,7 +156,18 @@ const CreateTaskModal = ({ visible, onClose, onUpdate }: {
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <ScrollView 
+                    style={styles.modalContent} 
+                    keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl 
+                            refreshing={isFetchingUsers} 
+                            onRefresh={() => refetchUsers()}
+                            tintColor="#E9435E"
+                            colors={["#E9435E"]}
+                        />
+                    }
+                >
                     
                     {/* Task Title */}
                     <View style={styles.inputGroup}>
@@ -326,6 +335,27 @@ const CreateTaskModal = ({ visible, onClose, onUpdate }: {
                         />
                     </View>
                 )}
+
+                {loadingUsers && (
+                    <View style={styles.statusOverlay}>
+                        <StatusMessage 
+                            isLoading={true}
+                            isSuccess={false}
+                            loadingMessage={"Loading users..."}
+                            resultMessage={""}
+                        />
+                    </View>
+                )}
+                {errorUsers && (
+                    <View style={styles.errorContainer}>
+                        <StatusMessage 
+                            isLoading={false}
+                            isSuccess={false}
+                            loadingMessage={""}
+                            resultMessage={"Error loading users, please try again"}
+                        />
+                    </View>
+                )}
             </SafeAreaView>
         </Modal>
     );
@@ -335,6 +365,12 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

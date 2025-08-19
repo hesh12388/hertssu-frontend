@@ -1,22 +1,20 @@
 import { useAuth } from '@/App';
+import { useCreateCrossCommitteeRequest } from '@/src/hooks/useProposalDetails';
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosInstance } from 'axios';
 import React, { useState } from 'react';
 import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
-import { CrossCommitteeRequestType } from '../../types/Proposal';
 
 const CreateCrossCommitteeRequestModal = ({ 
     visible, 
     proposalId,
     onClose, 
-    onUpdate 
 }: {
     visible: boolean;
     proposalId: number;
     onClose: () => void;
-    onUpdate: (request: CrossCommitteeRequestType) => void;
 }) => {
     const { api, user }: { api: AxiosInstance, user: any } = useAuth()!;
     
@@ -32,12 +30,13 @@ const CreateCrossCommitteeRequestModal = ({
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
+    const createRequestMutation = useCreateCrossCommitteeRequest();
 
-    // Hardcoded committees - exclude user's own committee
+
     const ALL_COMMITTEES = [
-        { label: 'Entertainment and Events', value: '5', id: 5 },
-        { label: 'Treasury', value: '3', id: 3 },
-        { label: 'Public Relations', value: '4', id: 4 }
+        { label: 'Entertainment and Events', value: '10', id: 10 },
+        { label: 'Treasury', value: '8', id: 8 },
+        { label: 'Public Relations', value: '6', id: 6 }
     ];
 
     // Filter out user's own committee
@@ -70,45 +69,45 @@ const CreateCrossCommitteeRequestModal = ({
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Creating cross-committee request...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Creating cross-committee request...");
+        setShowStatus(true);
 
-            const requestBody = {
-                title: formData.title,
-                description: formData.description,
-                targetCommitteeId: parseInt(formData.targetCommitteeId)
-            };
+        const requestBody = {
+            title: formData.title,
+            description: formData.description,
+            targetCommitteeId: parseInt(formData.targetCommitteeId)
+        };
 
-            console.log('Creating cross-committee request with data:', requestBody);
+        console.log('Creating cross-committee request with data:', requestBody);
 
-            const response = await api.post(`/proposals/${proposalId}/cross-committee-requests`, requestBody);
-
-            if (response.status === 201 || response.status === 200) {
-                console.log('Cross-committee request created successfully:', response.data);
-                setIsLoading(false);
-                setIsSuccess(true);
-                setResultMessage("Cross-committee request created successfully!");
-                const newRequest = response.data;
-                onUpdate(newRequest);
-            } else {
-                setIsLoading(false);
-                setIsSuccess(false);
-                setResultMessage("Error creating request");
+        createRequestMutation.mutate(
+            { proposalId, data: requestBody },
+            {
+                onSuccess: (newRequest) => {
+                    console.log('Cross-committee request created successfully:', newRequest);
+                    setIsLoading(false);
+                    setIsSuccess(true);
+                    setResultMessage("Cross-committee request created successfully!");
+                    
+                    // Remove onUpdate() call - cache is updated automatically
+                    setTimeout(() => {
+                        setShowStatus(false);
+                        handleCloseModal();
+                    }, 3000);
+                },
+                onError: (error) => {
+                    console.error('Error creating cross-committee request:', error);
+                    setIsLoading(false);
+                    setIsSuccess(false);
+                    setResultMessage("Error creating request, please try again");
+                    setTimeout(() => {
+                        setShowStatus(false);
+                        handleCloseModal();
+                    }, 3000);
+                }
             }
-
-        } catch (error) {
-            console.error('Error creating cross-committee request:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error creating request, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                handleCloseModal();
-            }, 3000);
-        }
+        );
     };
 
     return (

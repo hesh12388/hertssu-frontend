@@ -1,6 +1,7 @@
 import { useAuth } from '@/App';
+import { useDeleteWarning, useWarnings } from '@/src/hooks/useWarnings';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavBar from '../../components/Navbar';
@@ -33,55 +34,32 @@ interface UserSummary {
 const Warnings = () => {
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
-    const [warnings, setWarnings] = useState<WarningResponse[]>([]);
-    const [refreshing, setRefreshing] = useState(false);
+  
     
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
+    const { 
+        data: warnings = [], 
+        isLoading, 
+        error,
+        refetch,
+        isFetching
+    } = useWarnings();
+
+
     const auth = useAuth();
+    const {
+        mutate: deleteWarningMutate,
+        isPending: isDeleting,
+    } = useDeleteWarning();
     const { isHigherLevel } = usePermissions(auth?.user || null);
 
-    useEffect(() => {
-        fetchWarnings();
-    }, []);
-
-    const fetchWarnings = async () => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Fetching warnings...");
-            
-            // Fetch all warnings if admin, or just user's warnings if regular user
-            const endpoint = isHigherLevel ? '/warnings' : '/warnings/my-warnings';
-            const response = await auth?.api.get(endpoint);
-            
-            setWarnings(response?.data || []);
-            setIsSuccess(true);
-            setIsLoading(false);
-            setResultMessage("Successfully fetched warnings!");
-        } catch (error) {
-            console.error('Error fetching warnings:', error);
-            setIsSuccess(false);
-            setIsLoading(false);
-            setResultMessage("Error fetching warnings!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
-    };
-
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await fetchWarnings();
-        setRefreshing(false);
-    };
-
+ 
     const confirmDeleteWarning = (warning: WarningResponse) => {
         Alert.alert(
             "Delete Warning",
@@ -100,30 +78,32 @@ const Warnings = () => {
         );
     };
 
-    const deleteWarning = async (warningId: number) => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Deleting warning...");
+    const deleteWarning = (warningId: number) => {
+        setIsLoading(true);
+        setShowStatus(true);
+        setStatusMessage("Deleting warning...");
 
-            await auth?.api.delete(`/warnings/${warningId}`);
-            
-            setWarnings(prev => prev.filter(warning => warning.id !== warningId));
-            
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("Warning deleted successfully!");
-        } catch (error) {
-            console.error('Error deleting warning:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error deleting warning!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
+        deleteWarningMutate(
+            { warningId },
+            {
+            onSuccess: () => {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("Warning deleted successfully!");
+            },
+            onError: (error: any) => {
+                console.error('Error deleting warning:', error);
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error deleting warning!");
+            },
+            onSettled: () => {
+                setTimeout(() => setShowStatus(false), 2500);
+            },
+            }
+        );
     };
+
 
     const handleCreateWarning = () => {
         setIsCreateModalVisible(true);
@@ -158,6 +138,7 @@ const Warnings = () => {
 
     const getFilteredWarnings = () => {
         if (!searchText.trim()) return warnings;
+        if(!warnings || warnings.length === 0) return [];
         
         const searchLower = searchText.toLowerCase();
         return warnings.filter(warning => 
@@ -241,7 +222,7 @@ const Warnings = () => {
             <ScrollView 
                 keyboardShouldPersistTaps="handled"
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl refreshing={isFetching} onRefresh={refetch} />
                 }
             >
                 <View style={styles.header}>
@@ -334,10 +315,32 @@ const Warnings = () => {
             {showStatus && !isCreateModalVisible && (
                 <View style={styles.statusOverlay}>
                     <StatusMessage 
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        loadingMessage={statusMessage}
-                        resultMessage={resultMessage}
+                    isLoading={loading}
+                    isSuccess={isSuccess}
+                    loadingMessage={statusMessage}
+                    resultMessage={resultMessage}
+                    />
+                </View>
+            )}
+
+            {isLoading && !isCreateModalVisible && !showStatus && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                    isLoading={true}
+                    isSuccess={false}
+                    loadingMessage="Loading warnings..."
+                    resultMessage=""
+                    />
+                </View>
+            )}
+
+            {error && !isCreateModalVisible && !showStatus && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                    isLoading={false}
+                    isSuccess={false}
+                    loadingMessage=""
+                    resultMessage="Error loading data. Pull to retry."
                     />
                 </View>
             )}
@@ -346,8 +349,8 @@ const Warnings = () => {
                 <CreateWarningModal 
                     visible={isCreateModalVisible}
                     onClose={() => setIsCreateModalVisible(false)} 
-                    onUpdate={(newWarning: WarningResponse) => {      
-                        setWarnings(prev => [newWarning, ...prev]);
+                    onUpdate={() => {      
+                        refetch();
                     }}
                 />
             )}
@@ -359,6 +362,12 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#fff',
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     statusOverlay: {
         position: 'absolute',

@@ -1,68 +1,18 @@
-import { useAuth } from '@/App';
+import { useCommittees } from '@/src/hooks/useCommittees';
+import { useCreateUser } from '@/src/hooks/useUsers';
 import { Ionicons } from '@expo/vector-icons';
-import { AxiosInstance } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
-import { CommitteeType, SubcommitteeType, UserType } from '../../types/User';
 
-const COMMITTEES_WITH_IDS: CommitteeType[] = [
-    { id: 1, name: 'Human Resources & Development' },
-    { id: 2, name: 'Executive Board' },
-    { id: 3, name: 'Treasury' },
-    { id: 4, name: 'Public Relations' },
-    { id: 5, name: 'Entertainment & Events' },
-    { id: 6, name: 'Officers' },
-    { id: 7, name: 'Academic Affairs' },
-    { id: 8, name: 'Sports' },
-    { id: 9, name: 'Services' },
-    { id: 10, name: 'Marketing' }
-];
 
-const SUBCOMMITTEES_WITH_IDS: SubcommitteeType[] = [
-    // Human Resources & Development (committeeId: 1)
-    { id: 1, name: 'Training & Development', committeeId: 1 },
-    { id: 2, name: 'Recruitment, Documentation & Reports', committeeId: 1 },
-    
-    // Academic Affairs (committeeId: 7)
-    { id: 3, name: 'Academic Concerns & Support (Representation)', committeeId: 7 },
-    { id: 4, name: 'Careers and Internships', committeeId: 7 },
-    
-    // Marketing (committeeId: 10)
-    { id: 5, name: 'Social Media', committeeId: 10 },
-    { id: 6, name: 'OnGround Marketing', committeeId: 10 },
-    
-    // Public Relations (committeeId: 4)
-    { id: 7, name: 'Corporate Relations', committeeId: 4 },
-    { id: 8, name: 'Universities Relations', committeeId: 4 },
-    
-    // Sports (committeeId: 8)
-    { id: 9, name: 'Sports Events', committeeId: 8 },
-    { id: 10, name: 'Sports Representations & Service', committeeId: 8 },
-    
-    // Treasury (committeeId: 3)
-    { id: 11, name: 'Fundraising & Budgeting', committeeId: 3 },
-    { id: 12, name: 'ID Benefits', committeeId: 3 },
-    
-    // Services (committeeId: 9)
-    { id: 13, name: 'Volunteering & Charity', committeeId: 9 },
-    { id: 14, name: 'Sustainability & Eco Projects', committeeId: 9 },
-    
-    // Entertainment & Events (committeeId: 5)
-    { id: 15, name: 'Continuous Events and Trips', committeeId: 5 },
-    { id: 16, name: 'Competition', committeeId: 5 }
-];
-
-const CreateUserModal = ({ visible, onClose, onUpdate }: {
+const CreateUserModal = ({ visible, onClose }: {
     visible: boolean;
     onClose: () => void;
-    onUpdate: (user: UserType) => void;
 }) => {
-    const { api }: { api: AxiosInstance } = useAuth()!;
-    const [committees, setCommittees] = useState<CommitteeType[]>([]);
-    const [subcommittees, setSubcommittees] = useState<SubcommitteeType[]>([]);
-    const [filteredSubcommittees, setFilteredSubcommittees] = useState<SubcommitteeType[]>([]);
+    
+    const createUserMutation = useCreateUser();
     
     const [formData, setFormData] = useState({
         email: '',
@@ -74,6 +24,8 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
         subcommitteeId: ''
     });
     
+    const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
+
     // Status message state
     const [showStatus, setShowStatus] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -81,29 +33,11 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    useEffect(() => {
-        if (visible) {
-            initializeCommitteesAndSubcommittees();
-        }
-    }, [visible]);
-
-    useEffect(() => {
-        // Filter subcommittees based on selected committee
-        if (formData.committeeId) {
-            const filtered = subcommittees.filter(sub => 
-                sub.committeeId === parseInt(formData.committeeId)
-            );
-            setFilteredSubcommittees(filtered);
-        } else {
-            setFilteredSubcommittees([]);
-        }
-        // Reset subcommittee selection when committee changes
-        setFormData(prev => ({ ...prev, subcommitteeId: '' }));
-    }, [formData.committeeId]);
-
-    const initializeCommitteesAndSubcommittees = () => {
-        setCommittees(COMMITTEES_WITH_IDS);
-        setSubcommittees(SUBCOMMITTEES_WITH_IDS);
+    
+     const getSubcommittees = () => {
+        if (!formData.committeeId) return [];
+        const selectedCommittee = committees.find(c => c.id.toString() === formData.committeeId);
+        return selectedCommittee?.subcommittees || [];
     };
 
     const updateFormData = (field: string, value: any) => {
@@ -128,7 +62,7 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
     };
 
     const handleCreateUser = async () => {
-        if (!formData.email || !formData.password || !formData.firstName || 
+        if (!formData.email || !formData.password || !formData.firstName ||
             !formData.lastName || !formData.role || !formData.committeeId) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
@@ -147,61 +81,47 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Creating new user...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Creating new user...");
+        setShowStatus(true);
 
-            const requestBody = {
-                email: formData.email,
-                password: formData.password,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                role: formData.role,
-                committeeId: parseInt(formData.committeeId),
-                subcommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null
-            };
+        const requestBody = {
+            email: formData.email,
+            password: formData.password,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            role: formData.role,
+            committeeId: parseInt(formData.committeeId),
+            subcommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null
+        };
 
-            console.log('Creating user with data:', requestBody);
+        console.log('Creating user with data:', requestBody);
 
-            const response = await api.post('/users', requestBody);
-
-            if (response.status === 201 || response.status === 200) {
-                console.log('User created successfully:', response.data);
+        createUserMutation.mutate(requestBody, {
+            onSuccess: (newUser) => {
+                console.log('User created successfully:', newUser);
                 setIsLoading(false);
                 setIsSuccess(true);
                 setResultMessage("User created successfully!");
-                const newUser = response.data;
-                onUpdate(newUser);
-            } else {
+                
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
+            },
+            onError: (error: any) => {
+                console.error('Error creating user:', error);
                 setIsLoading(false);
                 setIsSuccess(false);
-                setResultMessage("Error creating user");
-            }
-
-        } catch (error: any) {
-            console.error('Error creating user:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            
-            // Handle specific error messages
-            if (error.response?.data?.message) {
-                setResultMessage(error.response.data.message);
-            } else if (error.response?.status === 409) {
-                setResultMessage("User with this email already exists");
-            } else {
                 setResultMessage("Error creating user, please try again");
+                
+                
+                setTimeout(() => {
+                    setShowStatus(false);
+                }, 3000);
             }
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                if (isSuccess) {
-                    handleCloseModal();
-                }
-            }, 3000);
-        }
+        });
     };
-
     const ROLE_OPTIONS = [
         { label: 'Chairperson', value: 'CHAIR_PERSON' },
         { label: 'Associate Chairperson', value: 'ASSOCIATE_CHAIRPERSON' },
@@ -210,19 +130,6 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
         { label: 'Member', value: 'MEMBER' }
     ];
 
-    const getCommitteeOptions = () => {
-        return committees.map(committee => ({
-            label: committee.name,
-            value: committee.id.toString()
-        }));
-    };
-
-    const getSubcommitteeOptions = () => {
-        return filteredSubcommittees.map(subcommittee => ({
-            label: subcommittee.name,
-            value: subcommittee.id.toString()
-        }));
-    };
 
     return (
         <Modal
@@ -343,10 +250,20 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
                         </View>
                         <View style={styles.pickerContainer}>
                             <RNPickerSelect
-                                onValueChange={(value) => updateFormData('committeeId', value)}
-                                items={getCommitteeOptions()}
+                                onValueChange={(value) => {
+                                    updateFormData('committeeId', value);
+                                    updateFormData('subcommitteeId', '');
+                                }}
+                                items={committees.map(committee => ({
+                                    label: committee.name,
+                                    value: committee.id.toString()
+                                }))}
                                 value={formData.committeeId}
-                                placeholder={{ label: "Select committee...", value: "" }}
+                                placeholder={{ 
+                                    label: committeesLoading ? "Loading committees..." : "Select committee...", 
+                                    value: "" 
+                                }}
+                                disabled={committeesLoading}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
@@ -354,24 +271,36 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
                     </View>
 
                     {/* Subcommittee */}
-                   
                     <View style={styles.inputGroup}>
                         <View style={styles.label}>
                             <Text style={styles.labelText}>Subcommittee</Text>
                             <Text style={styles.labelOptional}>(Optional)</Text>
                         </View>
-                        <View style={[styles.pickerContainer, (!formData.committeeId || filteredSubcommittees.length===0) && styles.pickerContainerDisabled]}>
+                        <View style={[
+                            styles.pickerContainer, 
+                            (!formData.committeeId || getSubcommittees().length === 0) && styles.pickerContainerDisabled
+                        ]}>
                             <RNPickerSelect
                                 onValueChange={(value) => updateFormData('subcommitteeId', value)}
-                                items={getSubcommitteeOptions()}
+                                items={getSubcommittees().map(subcommittee => ({
+                                    label: subcommittee.name,
+                                    value: subcommittee.id.toString()
+                                }))}
                                 value={formData.subcommitteeId}
-                                disabled={!formData.committeeId || filteredSubcommittees.length === 0}
-                                placeholder={{ label: "Select subcommittee...", value: "" }}
+                                disabled={!formData.committeeId || getSubcommittees().length === 0 || committeesLoading}
+                                placeholder={{ 
+                                    label: !formData.committeeId 
+                                        ? "Select committee first..." 
+                                        : getSubcommittees().length === 0 
+                                            ? "No subcommittees available" 
+                                            : "Select subcommittee...", 
+                                    value: "" 
+                                }}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
                         </View>
-                    </View>
+                </View>
 
                 </ScrollView>
 
@@ -382,6 +311,17 @@ const CreateUserModal = ({ visible, onClose, onUpdate }: {
                             isSuccess={isSuccess}
                             loadingMessage={statusMessage}
                             resultMessage={resultMessage}
+                        />
+                    </View>
+                )}
+
+                {error && (
+                    <View style={styles.errorContainer}>
+                        <StatusMessage 
+                            isLoading={false}
+                            isSuccess={false}
+                            loadingMessage={""}
+                            resultMessage={`Error loading committees`}
                         />
                     </View>
                 )}
@@ -402,6 +342,12 @@ const styles = StyleSheet.create({
         padding: 20,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalContent: {
         flex: 1,

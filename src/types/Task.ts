@@ -16,6 +16,7 @@ export interface TaskType {
     status: 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED';
     createdAt: string;
     updatedAt: string;
+    submittedAt: string;
 }
 
 

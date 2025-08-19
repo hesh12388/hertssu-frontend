@@ -1,4 +1,3 @@
-import { useAuth } from '@/App';
 import { useUserProfile } from '@/src/hooks/useUserProfile';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -22,7 +21,6 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, onClose }) => {
-    const { api } = useAuth()!;
     const { 
         data: profileData, 
         isLoading, 
@@ -164,7 +162,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                             <Text style={styles.retryButton}>Retry</Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={styles.statusOverlay}>
+                    <View style={styles.errorContainer}>
                         <StatusMessage 
                             isLoading={false}
                             isSuccess={false}
@@ -360,6 +358,12 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

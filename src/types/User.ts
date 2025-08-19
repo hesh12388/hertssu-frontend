@@ -1,4 +1,5 @@
 export interface User {
+  id: number;
   name: string;
   email: string;
   role: string;
@@ -21,12 +22,17 @@ export interface UserType {
 export interface CommitteeType {
     id: number;
     name: string;
+    slug: string;
 }
 
 export interface SubcommitteeType {
     id: number;
     name: string;
-    committeeId: number;
+    slug: string;
+}
+
+export interface CommitteeTypeWithSubcommittees extends CommitteeType {
+    subcommittees: SubcommitteeType[];
 }
 
 export interface AccountRequestDTO {

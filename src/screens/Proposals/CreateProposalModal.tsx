@@ -1,4 +1,6 @@
 import { useAuth } from '@/App';
+import { useCommittees } from '@/src/hooks/useCommittees';
+import { useCreateProposal } from '@/src/hooks/useProposals';
 import { User } from '@/src/types/User';
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosInstance } from 'axios';
@@ -7,13 +9,11 @@ import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, To
 import { Calendar } from 'react-native-calendars';
 import RNPickerSelect from 'react-native-picker-select';
 import { StatusMessage } from '../../components/StatusMessage';
-import { ProposalType } from '../../types/Proposal';
-const CreateProposalModal = ({ visible, onClose, onUpdate }: {
+const CreateProposalModal = ({ visible, onClose }: {
     visible: boolean;
     onClose: () => void;
-    onUpdate: (proposal: ProposalType) => void;
 }) => {
-    const { api, user }: { api: AxiosInstance, user: User | null } = useAuth()!;
+    const { user }: { api: AxiosInstance, user: User | null } = useAuth()!;
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
     
     const [formData, setFormData] = useState({
@@ -30,19 +30,17 @@ const CreateProposalModal = ({ visible, onClose, onUpdate }: {
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
-
+    const createProposalMutation = useCreateProposal();
    
-    const ALL_SUBCOMMITTEES = [
-        // Events
-        { label: 'Continous Events and Trips', value: '1', committeeId: 5 },
-        { label: 'Competitions', value: '2', committeeId: 5 },
-    ];
+    const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
 
     const getAvailableSubcommittees = () => {
         const userCommitteeId = user?.committeeId;
         if (!userCommitteeId) return [];
         
-        return ALL_SUBCOMMITTEES.filter(sub => sub.committeeId === userCommitteeId);
+        const committee = committees.find(c => c.id === userCommitteeId);
+
+        return committee?.subcommittees || [];
     };
 
     const updateFormData = (field: string, value: any) => {
@@ -65,53 +63,49 @@ const CreateProposalModal = ({ visible, onClose, onUpdate }: {
         onClose();
     };
 
+    
     const handleCreateProposal = async () => {
         if (!formData.title || !formData.description || !formData.assigneeId || !formData.dueDate || !formData.priority) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
 
-        try {
-            setIsLoading(true);
-            setStatusMessage("Creating your proposal...");
-            setShowStatus(true);
+        setIsLoading(true);
+        setStatusMessage("Creating your proposal...");
+        setShowStatus(true);
 
-            const requestBody = {
-                title: formData.title,
-                description: formData.description,
-                assigneeId: parseInt(formData.assigneeId),
-                dueDate: formData.dueDate,
-                priority: formData.priority
-            };
+        const requestBody = {
+            title: formData.title,
+            description: formData.description,
+            assigneeId: parseInt(formData.assigneeId),
+            dueDate: formData.dueDate,
+            priority: formData.priority
+        };
 
-            console.log('Creating proposal with data:', requestBody);
+        console.log('Creating proposal with data:', requestBody);
 
-            const response = await api.post('/proposals', requestBody);
-
-            if (response.status === 201 || response.status === 200) {
-                console.log('Proposal created successfully:', response.data);
+        createProposalMutation.mutate(requestBody, {
+            onSuccess: (newProposal) => {
+                console.log('Proposal created successfully:', newProposal);
                 setIsLoading(false);
                 setIsSuccess(true);
                 setResultMessage("Proposal created successfully!");
-                const newProposal = response.data;
-                onUpdate(newProposal);
-            } else {
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
+            },
+            onError: (error) => {
+                console.error('Error creating proposal:', error);
                 setIsLoading(false);
                 setIsSuccess(false);
-                setResultMessage("Error creating proposal");
+                setResultMessage("Error creating proposal, please try again");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    handleCloseModal();
+                }, 3000);
             }
-
-        } catch (error) {
-            console.error('Error creating proposal:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error creating proposal, please try again");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                handleCloseModal();
-            }, 3000);
-        }
+        });
     };
 
     const PRIORITY_OPTIONS = [
@@ -188,9 +182,13 @@ const CreateProposalModal = ({ visible, onClose, onUpdate }: {
                         <View style={styles.pickerContainer}>
                             <RNPickerSelect
                                 onValueChange={(value) => updateFormData('assigneeId', value)}
-                                 items={getAvailableSubcommittees()}
+                                items={getAvailableSubcommittees().map(sub => ({
+                                    label: sub.name,
+                                    value: sub.id.toString()
+                                }))}
+                                disabled={committeesLoading || !user?.committeeId}
                                 value={formData.assigneeId}
-                                placeholder={{ label: "Select subcommittee...", value: "" }}
+                                placeholder={ committeesLoading? { label: "Loading subcommittees...", value: "" } : { label: "Select subcommittee...", value: "" }}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
@@ -279,6 +277,16 @@ const CreateProposalModal = ({ visible, onClose, onUpdate }: {
                         />
                     </View>
                 )}
+                {error && (
+                    <View style={styles.errorContainer}>
+                        <StatusMessage 
+                            isLoading={false}
+                            isSuccess={false}
+                            loadingMessage={""}
+                            resultMessage={`Error loading committees`}
+                        />
+                    </View>
+                )}
             </SafeAreaView>
         </Modal>
     );
@@ -288,6 +296,12 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

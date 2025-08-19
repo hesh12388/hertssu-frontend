@@ -44,8 +44,8 @@ const App = () => {
   const decodeToken = (token: string) => {
     try {
       const d: any = jwtDecode(token);
-      console.log(d);
       setUser({
+        id: d.uid,
         name: d.name || "",
         email: d.email || "",
         role: d.role || "",
@@ -85,6 +85,7 @@ const App = () => {
 
   const hardLogout = async () => {
     await SecureStore.deleteItemAsync(REFRESH_KEY);
+    queryClient.clear();
     setUserToken(null);
     setUser(null);
   };

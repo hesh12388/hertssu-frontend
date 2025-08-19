@@ -1,7 +1,9 @@
 import { useAuth } from '@/App';
+import { useDeleteInterview, useInterviews } from '@/src/hooks/useInterviews';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavBar from '../../components/Navbar';
 import { StatusMessage } from '../../components/StatusMessage';
@@ -11,51 +13,32 @@ import ScheduleModal from './ScheduleModal';
 const Interview = () => {
 
     const [isOnHistory, setIsOnHistory] = useState(false);
-
-
     const [isModalVisible, setIsModalVisible] = useState(false);
-    
-
     const [showStatus, setShowStatus] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setIsLoading] = useState(true);
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
     const [resultMessage, setResultMessage] = useState("");
 
     const auth = useAuth();
 
-    const [interviews, setInterviews] = useState<InterviewType[]>([]);
+    const {isHigherLevel} = usePermissions(auth!.user);
+    const canEdit = !isHigherLevel;
+
     const [showMyInterviews, setShowMyInterviews] = useState(true);
     const [selectedInterview, setSelectedInterview] = useState<InterviewType | null>(null);
     const [showInterviewDetails, setShowInterviewDetails] = useState(false);
+
+    const deleteInterviewMutation = useDeleteInterview();
     
 
-    useEffect(() => {
-        fetchInterviews();
-    }, []);
-
-    const fetchInterviews = async () => {
-        try {
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Fetching your interviews...")
-            
-            const response = await auth?.api.get('/interviews');
-            setInterviews(response?.data);
-            setIsSuccess(true);
-            setIsLoading(false);
-            setResultMessage("Succesfully fetched your interviews!")
-        } catch (error) {
-            console.error('Error fetching interviews:', error);
-            setIsSuccess(false);
-            setIsLoading(false);
-            setResultMessage("Error fetching your interviews!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-            }, 2500);
-        }
-    };
+    const { 
+        data: interviews = [], 
+        isLoading, 
+        error, 
+        refetch,
+        isFetching
+    } = useInterviews();
 
     const getFilteredInterviews = () => {
         const now = new Date();
@@ -95,71 +78,38 @@ const Interview = () => {
     };
     
     const deleteInterview = async (interviewId: string) => {
-        try {
-            if (!interviewId) {
-                console.error('No interview ID provided for deletion');
-                return;
-            }
-            setIsLoading(true);
-            setShowStatus(true);
-            setStatusMessage("Deleting interview...");
-
-            await auth?.api.delete(`/interviews/${interviewId}`);
-            setInterviews(prev => prev.filter(int => int.id !== interviewId));
-            setIsLoading(false);
-            setIsSuccess(true);
-            setResultMessage("Interview deleted successfully!");
-        } catch (error) {
-            console.error('Error deleting interview:', error);
-            setIsLoading(false);
-            setIsSuccess(false);
-            setResultMessage("Error deleting interview!");
-        } finally {
-            setTimeout(() => {
-                setShowStatus(false);
-                setIsLoading(false);
-            }, 2500);
+        if (!interviewId) {
+            console.error('No interview ID provided for deletion');
+            return;
         }
-    }
+        
+        setIsLoading(true);
+        setShowStatus(true);
+        setStatusMessage("Deleting interview...");
 
-    const COMMITTEES: Record<string, string[]>= {
-        'Executive Board': [],
-        'Officers': [],
-        'Human Resources & Development': [
-            'Training & Development',
-            'Recruitment, Documentation & Reports'
-        ],
-        'Academic Affairs': [
-            'Academic Concerns & Support (Representation)',
-            'Careers and Internships'
-        ],
-        'Marketing': [
-            'Social Media',
-            'OnGround Marketing'
-        ],
-        'Public Relations': [
-            'Corporate Relations',
-            'Universities Relations'
-        ],
-        'Sports': [
-            'Sports Events',
-            'Sports Representations & Service'
-        ],
-        'Treasury': [
-            'Fundraising & Budgeting',
-            'ID Benefits'
-        ],
-        'Services': [
-            'Volunteering & Charity',
-            'Sustainability & Eco Projects'
-        ],
-        'Entertainment & Events': [
-            'Continuous Events and Trips',
-            'Competition'
-        ]
+        deleteInterviewMutation.mutate({ interviewId }, {
+            onSuccess: () => {
+                setIsLoading(false);
+                setIsSuccess(true);
+                setResultMessage("Interview deleted successfully!");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    setIsLoading(false);
+                }, 2500);
+            },
+            onError: () => {
+                setIsLoading(false);
+                setIsSuccess(false);
+                setResultMessage("Error deleting interview!");
+                setTimeout(() => {
+                    setShowStatus(false);
+                    setIsLoading(false);
+                }, 2500);
+            }
+        });
     };
+    
 
-   
     const POSITIONS = [
         { label: 'President', value: 'PRESIDENT' },
         { label: 'Vice President', value: 'VICE_PRESIDENT' },
@@ -224,7 +174,7 @@ const Interview = () => {
                 
                 
                 <Text style={styles.position}>{item.position}</Text>
-                <Text style={styles.committee}>{item.committee} {item.subCommittee && `• ${item.subCommittee}`}</Text>
+                <Text style={styles.committee}>{item.committee.name} {item.subCommittee && `• ${item.subCommittee.name}`}</Text>
                 
                 <View style={styles.timeContainer}>
                     <View style={styles.cardHeaderBottom}>
@@ -233,7 +183,7 @@ const Interview = () => {
                             {startDateTime.date} • {startDateTime.time} - {endDateTime.time}
                         </Text>
                     </View>
-                     {(item.status === "SCHEDULED" && new Date() < new Date(item.startTime)) && (
+                     {(canEdit && item.status === "SCHEDULED" && new Date() < new Date(item.startTime)) && (
                         <TouchableOpacity 
                             onPress={(e) => {
                                 e.stopPropagation();
@@ -253,16 +203,27 @@ const Interview = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-                <NavBar />
+            <NavBar />
+            <ScrollView 
+            keyboardShouldPersistTaps="handled" 
+            refreshControl={
+                <RefreshControl 
+                    refreshing={isFetching}
+                    onRefresh={refetch}
+                    tintColor="#E9435E"
+                    colors={["#E9435E"]}
+                />
+            }>
                 <View style={styles.header}>
                     <Text style={styles.headerText}>
                         {isOnHistory ? "Interview History" : "Upcoming Interviews"}
                     </Text>
                     <View style={styles.headerLeft}>
-                        <TouchableOpacity onPress={handleAddInterview}>
-                            <Ionicons name="add-circle-outline" size={34} color='#E9435E' />
-                        </TouchableOpacity>
+                        {canEdit && (
+                            <TouchableOpacity onPress={handleAddInterview}>
+                                <Ionicons name="add-circle-outline" size={34} color='#E9435E' />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
                 <View style={styles.optionsContainer}>
@@ -315,10 +276,32 @@ const Interview = () => {
             {showStatus && !isModalVisible && (
                 <View style={styles.statusOverlay}>
                     <StatusMessage 
-                        isLoading={isLoading}
-                        isSuccess={isSuccess}
-                        loadingMessage={statusMessage}
-                        resultMessage={resultMessage}
+                    isLoading={loading}
+                    isSuccess={isSuccess}
+                    loadingMessage={statusMessage}
+                    resultMessage={resultMessage}
+                    />
+                </View>
+            )}
+
+            {isLoading && !isModalVisible && !showStatus && (
+                <View style={styles.statusOverlay}>
+                    <StatusMessage 
+                    isLoading={true}
+                    isSuccess={false}
+                    loadingMessage="Loading interviews..."
+                    resultMessage=""
+                    />
+                </View>
+            )}
+
+            {error && !isModalVisible && !showStatus && (
+                <View style={styles.errorContainer}>
+                    <StatusMessage 
+                    isLoading={false}
+                    isSuccess={false}
+                    loadingMessage=""
+                    resultMessage="Error loading data. Pull to retry."
                     />
                 </View>
             )}
@@ -328,27 +311,17 @@ const Interview = () => {
                 onClose={() => {
                     setIsModalVisible(false);
                 }} 
-                onUpdate={(scheduled: InterviewType) => {      
-                    setInterviews(prev => [scheduled, ...prev]);
-                }}
-                COMMITTEES={COMMITTEES}
                 POSITIONS={POSITIONS}
             />
             
             <DetailsModal 
                 visible={showInterviewDetails}
                 selectedInterview={selectedInterview}
-                onClose={() => setShowInterviewDetails(false)} 
-                onUpdate={(updatedInterview: InterviewType) => {      
-                    setInterviews(prev => 
-                        prev.map(int => int.id === updatedInterview.id ? updatedInterview : int)
-                    );
-                }}
-                COMMITTEES={COMMITTEES}
+                onClose={() => setShowInterviewDetails(false)}
                 POSITIONS={POSITIONS}
+                isReadOnly={!canEdit}
             />
                    
-            
         </SafeAreaView>
     )
 }
@@ -357,6 +330,12 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#fff',
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     statusOverlay: {
         position: 'absolute',

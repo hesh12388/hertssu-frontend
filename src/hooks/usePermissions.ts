@@ -5,7 +5,7 @@ export function usePermissions(user: User | null) {
     const isFromCommittee = (committeeId: number) => user?.committeeId === committeeId;
     
 
-    const isChairperson = user?.role === 'CHAIR_PERSON';
+    const isChairperson = user?.role === 'CHAIRPERSON';
     const isAssociateChair = user?.role === 'ASSOCIATE_CHAIRPERSON';
     const isLeader = user?.role === 'LEADER';
     const isAssociateLeader = user?.role === 'ASSOCIATE_LEADER';
@@ -14,11 +14,11 @@ export function usePermissions(user: User | null) {
 
     const isChairLevel = isChairperson || isAssociateChair;
     const isLeaderLevel = isLeader || isAssociateLeader;
-    const isHigherLevel = isFromCommittee(2) || isOfficer;
+    const isHigherLevel = isFromCommittee(1) || isOfficer;
     
     const canSeeTeam = !isMember;
-    const canSeeInterviews = isFromCommittee(1);
-    const canSeeProposals = isFromCommittee(3) || isFromCommittee(4) || isFromCommittee(5) || isHigherLevel;
+    const canSeeInterviews = isFromCommittee(2) || isHigherLevel;
+    const canSeeProposals = (isFromCommittee(6) || isFromCommittee(8) || isFromCommittee(10) || isHigherLevel) && !isMember;
     
     const canCreateProposals = isChairLevel;
     const canCreateCrossCommitteeRequests = isLeaderLevel;
