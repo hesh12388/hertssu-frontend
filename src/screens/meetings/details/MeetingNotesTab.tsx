@@ -32,7 +32,7 @@ const MeetingNotesTab = ({ meetingId }: { meetingId: number }) => {
       setNotes(
         list.map((n: any) => ({
           id: n.id,
-          text: n.text ?? n.note, // backend might send "text" now
+          text: n.text ?? n.note, 
           author: n.author,
           createdAt: n.createdAt,
           updatedAt: n.updatedAt,
@@ -118,7 +118,6 @@ const removeNote = async (note: Note) => {
 
   return (
     <View style={{ padding: 16 }}>
-      {/* composer */}
       <View style={styles.composer}>
         <TextInput
           value={draft}
@@ -133,7 +132,6 @@ const removeNote = async (note: Note) => {
         </TouchableOpacity>
       </View>
 
-      {/* list */}
       {notes.map((n) => (
         <NoteRow
           key={n.id}
@@ -143,7 +141,6 @@ const removeNote = async (note: Note) => {
           loading={pendingIds.has(n.id)}
         />
       ))}
-
 
       {notes.length === 0 && (
         <View style={styles.center}>

@@ -1,13 +1,14 @@
 // MeetingPerformanceTab.tsx
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../../../App";
+
 import {
-    addMeetingEvaluation,
-    deleteMeetingEvaluation,
-    getMeetingEvaluations,
-    updateMeetingEvaluation,
+  addMeetingEvaluation,
+  deleteMeetingEvaluation,
+  getMeetingEvaluations,
+  updateMeetingEvaluation,
 } from "../../../../services/meetingServices";
 
 type ParticipantLite = { id: number; email: string; firstName: string; lastName: string };
@@ -20,6 +21,8 @@ type EvalRow = {
   performance: number;
   communication: number;
   teamwork: number;
+  attendance: boolean;
+  isLate: boolean;
 };
 
 const criterias: Array<keyof Pick<EvalRow, "performance" | "communication" | "teamwork">> = [
@@ -39,7 +42,7 @@ const MeetingPerformanceTab = ({
   const api = auth?.api;
 
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<Record<number, EvalRow>>({}); // keyed by participantId
+  const [rows, setRows] = useState<Record<number, EvalRow>>({});
 
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
 
@@ -61,6 +64,8 @@ const MeetingPerformanceTab = ({
           performance: e.performance ?? 0,
           communication: e.communication ?? 0,
           teamwork: e.teamwork ?? 0,
+          attendance: e.attendance ?? false,
+          isLate: e.isLate ?? false,
         };
       });
 
@@ -73,17 +78,14 @@ const MeetingPerformanceTab = ({
             performance: 0,
             communication: 0,
             teamwork: 0,
+            attendance: false,
+            isLate: false
           };
         }
       });
 
-      console.log("🔎 Participants prop:", participants);
-      console.log("🔎 Rows being set:", map);
-
-
       setRows(map);
     } catch (e) {
-      console.error("❌ load evaluations failed", e);
       const map: Record<number, EvalRow> = {};
       participants.forEach((p) => {
         map[p.id] = {
@@ -93,6 +95,8 @@ const MeetingPerformanceTab = ({
           performance: 0,
           communication: 0,
           teamwork: 0,
+          attendance: false,
+          isLate: false,
         };
       });
       setRows(map);
@@ -103,7 +107,6 @@ const MeetingPerformanceTab = ({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId, JSON.stringify(participants.map((p) => p.id))]);
 
   const list = useMemo(
@@ -127,6 +130,8 @@ const saveOne = async (participantId: number) => {
     performance: row.performance,
     communication: row.communication,
     teamwork: row.teamwork,
+    attendance: row.attendance,   
+    isLate: row.isLate,           
   };
 
   setSavingIds((prev) => new Set(prev).add(participantId));
@@ -137,7 +142,7 @@ const saveOne = async (participantId: number) => {
       await addMeetingEvaluation(api, meetingId, body);
     }
   } catch (e) {
-    console.error("❌ save evaluation failed", e);
+    console.error("save evaluation failed", e);
   } finally {
     setSavingIds((prev) => {
       const next = new Set(prev);
@@ -159,7 +164,7 @@ const clearOne = async (participantId: number) => {
       await deleteMeetingEvaluation(api, meetingId, existingId);
     }
   } catch (e) {
-    console.error("❌ delete eval failed", e);
+    console.error("delete eval failed", e);
   } finally {
     setSavingIds((prev) => {
       const next = new Set(prev);
@@ -179,6 +184,8 @@ const clearOne = async (participantId: number) => {
         performance: 0,
         communication: 0,
         teamwork: 0,
+        attendance: false,
+        isLate: false,
       },
     }));
   }
@@ -197,7 +204,6 @@ const clearOne = async (participantId: number) => {
       <View style={styles.inner}>
         {list.map((row) => (
           <View key={`card-${row.participantId}`} style={styles.card}>
-            {/* Avatar + Name + Email */}
             <View style={styles.headerRow}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{row.participantName?.[0]?.toUpperCase()}</Text>
@@ -208,7 +214,6 @@ const clearOne = async (participantId: number) => {
               </View>
             </View>
 
-            {/* Criteria Stars */}
             {criterias.map((k) => (
               <View key={`crit-${row.participantId}-${k}`} style={styles.criteriaRow}>
                 <Text style={styles.criteriaLabel}>{labelFor(k)}</Text>
@@ -219,7 +224,21 @@ const clearOne = async (participantId: number) => {
               </View>
             ))}
 
-            {/* Save & Clear Buttons */}
+            <View style={styles.criteriaRow}>
+              <Text style={styles.criteriaLabel}>Attendance</Text>
+              <Switch
+                value={row.attendance}
+                onValueChange={(v) => setVal(row.participantId, "attendance", v)}
+              />
+            </View>
+            <View style={styles.criteriaRow}>
+              <Text style={styles.criteriaLabel}>Is Late</Text>
+              <Switch
+                value={row.isLate}
+                onValueChange={(v) => setVal(row.participantId, "isLate", v)}
+              />
+            </View>
+
             <View style={styles.actions}>
               {savingIds.has(row.participantId) ? (
                 <ActivityIndicator color="#E9435E" />

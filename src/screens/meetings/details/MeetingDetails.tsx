@@ -84,7 +84,7 @@ const MeetingDetails: React.FC<Props> = ({
           seed
         );
       } catch (e) {
-        console.error("❌ Meeting fetch failed:", e);
+        console.error("Meeting fetch failed:", e);
       } finally {
         if (!cancelled) setLoadingFresh(false);
       }
@@ -145,7 +145,6 @@ const MeetingDetails: React.FC<Props> = ({
                   payload
                 );
 
-                // ✅ Re-fetch because backend returns 204
                 await fetchMeetingSWRCached(api, meeting.meetingId, (m) => {
                   setMeeting(m);
                   setParticipants(m?.participantEmails ?? []);
@@ -164,7 +163,6 @@ const MeetingDetails: React.FC<Props> = ({
       return;
     }
 
-    // --- non recurring meeting ---
     try {
       setSaving(true);
       const updated = await updateMeeting(api, meeting.meetingId, payload);
@@ -232,7 +230,6 @@ const MeetingDetails: React.FC<Props> = ({
           style={styles.sheet}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
               <Text style={styles.headerBtnText}>Close</Text>
@@ -271,7 +268,6 @@ const MeetingDetails: React.FC<Props> = ({
             )}
           </View>
 
-          {/* Tabs */}
           <View style={styles.tabs}>
             <TabBtn
               active={tab === "INFO"}
@@ -290,7 +286,6 @@ const MeetingDetails: React.FC<Props> = ({
             />
           </View>
 
-          {/* Body */}
           {isHydrating ? (
             <View
               style={{
@@ -349,7 +344,6 @@ const MeetingDetails: React.FC<Props> = ({
                 </ScrollView>
               </Pressable>
 
-              {/* Participants picker overlay */}
               {editing && participantsVisible && (
                 <ParticipantsOverlay
                   visible={participantsVisible}

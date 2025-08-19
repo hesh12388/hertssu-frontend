@@ -187,14 +187,11 @@ const MeetingDetails: React.FC<Props> = ({
   const auth = useAuth();
   const api = auth?.api;
 
-  // fetched meeting (progressively hydrated via SWR)
   const [meeting, setMeeting] = useState<MeetingResponseDto | null>(null);
   const [loadingFresh, setLoadingFresh] = useState(false);
 
-  // edit mode
   const [editing, setEditing] = useState(false);
 
-  // form state (only used in edit mode)
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -205,16 +202,13 @@ const MeetingDetails: React.FC<Props> = ({
   const [reminders, setReminders] = useState<number[]>([]);
   const [participants, setParticipants] = useState<string[]>([]);
 
-  // pickers
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [participantsVisible, setParticipantsVisible] = useState(false);
 
-  // actions
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // scroll helpers
   const scrollRef = useRef<ScrollView>(null);
   const positions = useRef<Record<string, number>>({});
   const storePos = (key: string) => (e: any) => (positions.current[key] = e.nativeEvent.layout.y);
@@ -268,7 +262,7 @@ const MeetingDetails: React.FC<Props> = ({
         }, seed);
         // fresh fetch happens inside; we just flip loader off when it resolves
       } catch (e) {
-        console.error("❌ Meeting fetch failed:", e);
+        console.error("eeting fetch failed:", e);
       } finally {
         if (!cancelled) setLoadingFresh(false);
       }
@@ -283,10 +277,9 @@ const MeetingDetails: React.FC<Props> = ({
   const startEditing = () => setEditing(true);
   const stopEditing = () => {
     setEditing(false);
-    // reset form from last known meeting (discard edits)
     if (meeting) {
       primeMeetingCache(meeting);
-      setMeeting({ ...meeting }); // triggers effect to re-seed inputs
+      setMeeting({ ...meeting }); 
     }
   };
 
@@ -298,13 +291,12 @@ const MeetingDetails: React.FC<Props> = ({
     onDeleted?.();
     onClose();
   } catch (e) {
-    console.error("❌ Delete by ID failed:", e);
+    console.error("Delete by ID failed:", e);
   } finally {
     setDeleting(false);
   }
 };
 
-// Delete an entire recurrence series by recurrenceId
 const deleteByOccurrence = async () => {
   if (!api || !meeting?.recurrenceId) return;
   try {
@@ -313,7 +305,7 @@ const deleteByOccurrence = async () => {
     onDeleted?.();
     onClose();
   } catch (e) {
-    console.error("❌ Delete series failed:", e);
+    console.error(" Delete series failed:", e);
   } finally {
     setDeleting(false);
   }
@@ -352,7 +344,7 @@ const deleteByOccurrence = async () => {
               setEditing(false);
               onUpdated?.(updated);
             } catch (e) {
-              console.error("❌ Update occurrence failed:", e);
+              console.error(" Update occurrence failed:", e);
             } finally {
               setSaving(false);
             }
@@ -394,7 +386,7 @@ const deleteByOccurrence = async () => {
       setEditing(false);
       onUpdated?.(updated);
     } catch (e) {
-      console.error("❌ Update meeting failed:", e);
+      console.error(" Update meeting failed:", e);
     } finally {
       setSaving(false);
     }
@@ -427,7 +419,7 @@ const deleteByOccurrence = async () => {
 
   if (!visible) return null;
 
-  const isHydrating = !meeting; // first paint: render loader, but overlay + sheet already shown
+  const isHydrating = !meeting; /
 
   return (
   <Modal visible={visible} animationType="slide" transparent>
@@ -436,7 +428,6 @@ const deleteByOccurrence = async () => {
         style={styles.sheet}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>Close</Text>
@@ -465,7 +456,6 @@ const deleteByOccurrence = async () => {
           )}
         </View>
 
-        {/* Loader (first paint) */}
         {isHydrating ? (
           <View
             style={{

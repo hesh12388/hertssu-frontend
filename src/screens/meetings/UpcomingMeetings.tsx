@@ -22,9 +22,6 @@ import MeetingDetails from "./details/MeetingDetails";
 
 // TO FIX: PADDING OVER THE HEADER
 
-// TO ADD: AGENDA TO QUICKLY SWITCH AND SCROLL TO DATE
-
-
 type MeetingListItem = {
   meetingId: number;
   title: string;
@@ -39,7 +36,6 @@ type MeetingListItem = {
 
 type Section = { title: string; data: MeetingListItem[] };
 
-// Cache for reducing API calls
 type CacheEntry = {
   sections: Section[];
   timestamp: number;
@@ -49,7 +45,6 @@ type CacheEntry = {
 const CACHE_DURATION = 2 * 60 * 1000; 
 const ITEMS_PER_PAGE = 15; 
 
-// Optimized hook with caching and reduced API calls
 const useMeetings = (isHistory: boolean) => {
   const auth = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
@@ -59,7 +54,6 @@ const useMeetings = (isHistory: boolean) => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   
-  // Add cache state
   const [cache] = useState<Map<string, CacheEntry>>(new Map());
 
   const resetPagination = useCallback(() => {
@@ -80,7 +74,6 @@ const useMeetings = (isHistory: boolean) => {
 
     const cacheKey = getCacheKey(isHistory, pageNum);
     
-    // Check cache first (only for first page)
     if (pageNum === 0 && !append) {
       const cached = cache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -126,7 +119,6 @@ const useMeetings = (isHistory: boolean) => {
 
       setHasMore(meetings.length === ITEMS_PER_PAGE && (pageNum + 1) * ITEMS_PER_PAGE < totalElements);
 
-      // 🚀 OPTIMIZATION: Simplified data mapping (no client-side recurrence expansion)
       const minimal: MeetingListItem[] = meetings
         .filter((m: any) => m && m.meetingId !== -1 && m.date)
         .map((m: any) => ({
@@ -141,7 +133,6 @@ const useMeetings = (isHistory: boolean) => {
           isAllDay: !!m.isAllDay,
         }));
 
-      // Group by date (much faster without recurrence expansion)
       const grouped: Record<string, MeetingListItem[]> = minimal.reduce((acc, m) => {
         acc[m.date] = acc[m.date] || [];
         acc[m.date].push(m);
@@ -161,7 +152,7 @@ const useMeetings = (isHistory: boolean) => {
 
       if (append) {
         setSections(prevSections => {
-          // 🚀 OPTIMIZATION: More efficient merging
+          //  OPTIMIZATION: More efficient merging
           const existingDates = new Set(prevSections.map(s => s.title));
           const uniqueNewSections = newSections.filter(s => !existingDates.has(s.title));
           return [...prevSections, ...uniqueNewSections].sort((a, b) =>
@@ -181,7 +172,7 @@ const useMeetings = (isHistory: boolean) => {
       }
 
     } catch (err) {
-      console.error("❌ Error fetching meetings:", err);
+      console.error(" Error fetching meetings:", err);
       if (!append) setSections([]);
     } finally {
       setLoading(false);
@@ -210,14 +201,13 @@ const useMeetings = (isHistory: boolean) => {
     refetch();
   }, [refetch]);
 
-  // 🚀 OPTIMIZATION: Only refetch when switching tabs, not on every dependency change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       refetch();
-    }, 50); // Small delay to batch multiple changes
+    }, 50); 
     
     return () => clearTimeout(timeoutId);
-  }, [isHistory]); // Removed other dependencies to prevent cascade
+  }, [isHistory]); 
 
   return { 
     sections, 
@@ -231,7 +221,6 @@ const useMeetings = (isHistory: boolean) => {
   };
 };
 
-// 🚀 OPTIMIZATION: Memoized meeting card component
 const MeetingCard = React.memo(({ 
   item, 
   onPress, 
@@ -317,7 +306,6 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
     onRefresh 
   } = useMeetings(isOnHistory);
 
-  // 🚀 OPTIMIZATION: Debounced search to avoid excessive filtering
   const filteredSections = useMemo(() => {
     if (!searchText.trim()) return sections;
     
@@ -344,7 +332,7 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
 
   const handleToggle = useCallback((newIsHistory: boolean) => {
     if (newIsHistory !== isOnHistory) {
-      setSearchText(""); // Clear search when switching tabs
+      setSearchText(""); 
       setIsOnHistory(newIsHistory);
     }
   }, [isOnHistory]);
@@ -514,9 +502,9 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
-          removeClippedSubviews={true} // 🚀 OPTIMIZATION: Improve scrolling performance
-          maxToRenderPerBatch={10} // 🚀 OPTIMIZATION: Render fewer items per batch
-          windowSize={10} // 🚀 OPTIMIZATION: Smaller window size
+          removeClippedSubviews={true} 
+          maxToRenderPerBatch={10} 
+          windowSize={10} 
         />
       ) : (
         <View style={styles.emptyState}>
@@ -527,7 +515,6 @@ const UpcomingMeetingsWithCalendar = ({ navigation }: any) => {
         </View>
       )}
 
-      {/* Modals */}
       <AddMeetingModal
         visible={isAddModalVisible}
         onClose={() => setAddModalVisible(false)}
