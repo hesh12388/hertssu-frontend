@@ -36,6 +36,7 @@ export type CreateMeetingPayload = {
   isAllDay?: boolean;
   reminders?: number[];
   visibility?: "PUBLIC" | "PRIVATE" | "CONFIDENTIAL";
+  recurrenceUntil?: string | null;
 };
 
 export type MeetingResponseDto = {

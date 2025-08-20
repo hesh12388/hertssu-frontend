@@ -796,13 +796,8 @@ const ProposalDetailsModal = ({
             )}
 
             {(hasError) && !showStatus && (
-                <View style={styles.statusOverlay}>
-                    <StatusMessage 
-                        isLoading={false}
-                        isSuccess={false}
-                        loadingMessage=""
-                        resultMessage="Error loading data. Pull to retry."
-                    />
+                <View style={styles.errorContainer}>
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 
@@ -828,6 +823,12 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     modalHeader: {
         flexDirection: 'row',

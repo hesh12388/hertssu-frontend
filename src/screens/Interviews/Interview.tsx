@@ -43,10 +43,10 @@ const Interview = () => {
     const getFilteredInterviews = () => {
         const now = new Date();
         let filtered = interviews;
-
+        console.log(filtered);
         // Filter by time (upcoming vs history)
         if (isOnHistory) {
-            filtered = interviews.filter(interview => new Date(interview.endTime) < now);
+            filtered = interviews.filter(interview => new Date(interview.startTime) < now);
         } else {
             filtered = interviews.filter(interview => new Date(interview.startTime) >= now);
         }
@@ -297,12 +297,7 @@ const Interview = () => {
 
             {error && !isModalVisible && !showStatus && (
                 <View style={styles.errorContainer}>
-                    <StatusMessage 
-                    isLoading={false}
-                    isSuccess={false}
-                    loadingMessage=""
-                    resultMessage="Error loading data. Pull to retry."
-                    />
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 

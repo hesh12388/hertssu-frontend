@@ -226,9 +226,9 @@ const Users = () => {
                     <TouchableOpacity 
                         onPress={() => confirmDeleteUser(item)}
                         style={styles.deleteButton}
-                        disabled={item.committeeId === 2} // Prevent deletion of admin user
+                        disabled={item.committeeId === 1}
                     >
-                        <Ionicons name="trash-outline" size={20} color={item.committeeId === 2 ? "#999" : "#ff4444"}/>
+                        <Ionicons name="trash-outline" size={20} color={item.committeeId === 1 ? "#999" : "#ff4444"}/>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -431,12 +431,7 @@ const Users = () => {
 
             {(errorUsers || errorAccountRequests) && !isCreateModalVisible && !showStatus && (
                 <View style={styles.errorContainer}>
-                    <StatusMessage 
-                    isLoading={false}
-                    isSuccess={false}
-                    loadingMessage=""
-                    resultMessage="Error loading data. Pull to retry."
-                    />
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 

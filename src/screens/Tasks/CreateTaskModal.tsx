@@ -348,12 +348,7 @@ const CreateTaskModal = ({ visible, onClose}: {
                 )}
                 {errorUsers && (
                     <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage={""}
-                            resultMessage={"Error loading users, please try again"}
-                        />
+                        <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                     </View>
                 )}
             </SafeAreaView>

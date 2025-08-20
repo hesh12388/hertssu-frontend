@@ -298,7 +298,7 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
                                 (!formData.committeeId || getSubcommittees().length === 0) && styles.pickerContainerDisabled
                             ]}>
                                 <RNPickerSelect
-                                    onValueChange={(value) => updateFormData('subCommitteeId', value)}
+                                    onValueChange={(value) => updateFormData('subcommitteeId', value)}
                                     items={getSubcommittees().map(subcommittee => ({
                                         label: subcommittee.name,
                                         value: subcommittee.id.toString()
@@ -518,12 +518,7 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
 
                     {(error || errorUsers) && (
                         <View style={styles.errorContainer}>
-                            <StatusMessage 
-                                isLoading={false}
-                                isSuccess={false}
-                                loadingMessage={""}
-                                resultMessage={`Error loading committees or users`}
-                            />
+                            <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                         </View>
                     )}
                 </SafeAreaView>

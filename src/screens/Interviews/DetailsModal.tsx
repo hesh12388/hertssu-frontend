@@ -178,16 +178,21 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
             console.error('Error opening Zoom:', error);
         }
     };
+
+    const handleOnClose = () => {
+        setEditData(null);
+        onClose();
+    }
     
 
-    const disabled = new Date(editData.endTime) < new Date() || editData.interviewerEmail!== auth?.user?.email;
+    const disabled = new Date(editData.startTime) < new Date() || editData.interviewerEmail!== auth?.user?.email;
     const logDisabled = editData.status === "LOGGED" || editData.interviewerEmail!== auth?.user?.email;
     return (
         <Modal
             visible={visible}
             animationType="slide"
             presentationStyle="pageSheet"
-            onRequestClose={showStatus ? () => {} : onClose}
+            onRequestClose={showStatus ? () => {} : handleOnClose}
         >
             <SafeAreaView style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
@@ -214,7 +219,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.name}
                             onChangeText={(value) => updateEditData('name', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
+                            editable={new Date(editData.startTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
                             placeholder="Enter candidate's full name"
                             placeholderTextColor="#999"
                         />
@@ -229,7 +234,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.gafEmail}
                             onChangeText={(value) => updateEditData('gafEmail', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
+                            editable={new Date(editData.startTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
                             placeholder="Enter GAF email"
                             placeholderTextColor="#999"
                             keyboardType="email-address"
@@ -245,7 +250,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.phoneNumber}
                             onChangeText={(value) => updateEditData('phoneNumber', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
+                            editable={new Date(editData.startTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
                             placeholder="Enter phone number"
                             placeholderTextColor="#999"
                             keyboardType="phone-pad"
@@ -260,7 +265,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                             style={[styles.input, disabled && styles.pickerContainerDisabled]}
                             value={editData.gafId}
                             onChangeText={(value) => updateEditData('gafId', value)}
-                            editable={new Date(editData.endTime) > new Date() && editData.interviewerEmail=== auth?.user?.email && !isReadOnly}
+                            editable={new Date(editData.startTime) > new Date() && editData.interviewerEmail=== auth?.user?.email}
                             placeholder="Enter GAF ID"
                             placeholderTextColor="#999"
                         />
@@ -278,7 +283,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                                     }}
                                     items={POSITIONS}
                                     value={editData.position}
-                                    disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email && !isReadOnly}
+                                    disabled={new Date(editData.startTime) < new Date() || editData.interviewerEmail!= auth?.user?.email}
                                     placeholder={{ label: "Select position...", value: "" }}
                                     Icon={() => <Ionicons name="chevron-down" size={25} color="#666" />}
                                     style={pickerSelectStyles}
@@ -306,7 +311,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                                 }))}
                                 value={editData.committee?.id?.toString() || ""} // Get ID from committee object
                                 placeholder={{ label: committeesLoading ? "Loading committees..." : "Select committee...", value: "" }}
-                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail != auth?.user?.email || isReadOnly || committeesLoading}
+                                disabled={new Date(editData.startTime) < new Date() || editData.interviewerEmail != auth?.user?.email || committeesLoading}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
@@ -340,7 +345,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                                             : "Select subcommittee...", 
                                     value: "" 
                                 }}
-                                disabled={new Date(editData.endTime) < new Date() || editData.interviewerEmail != auth?.user?.email || !editData.committee || getSubcommittees().length === 0 || isReadOnly || committeesLoading}
+                                disabled={new Date(editData.startTime) < new Date() || editData.interviewerEmail != auth?.user?.email || !editData.committee || getSubcommittees().length === 0 || committeesLoading}
                                 style={pickerSelectStyles}
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
@@ -358,7 +363,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                         
                         <TouchableOpacity 
                             style={[styles.dateDisplay, disabled && styles.pickerContainerDisabled]} 
-                            onPress={(new Date(editData.endTime) < new Date() || editData.interviewerEmail!= auth?.user?.email || isReadOnly) ? () =>{} : () => setIsEditCalendarVisible(!isEditCalendarVisible)}
+                            onPress={(new Date(editData.startTime) < new Date() || editData.interviewerEmail!= auth?.user?.email) ? () =>{} : () => setIsEditCalendarVisible(!isEditCalendarVisible)}
                         >
                             <Text style={styles.dateText}>
                                 {new Date(editData.startTime).toLocaleDateString()}
@@ -376,12 +381,17 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                                     }
                                 }}
                                 onDayPress={day => {
-                                    // Update both start and end time with new date
+                                    // Update both start and end time with new date   
                                     const currentStartTime = new Date(editData.startTime);
                                     const currentEndTime = new Date(editData.endTime);
                                     
                                     const newStartTime = new Date(day.dateString + 'T' + currentStartTime.toTimeString().split(' ')[0]);
                                     const newEndTime = new Date(day.dateString + 'T' + currentEndTime.toTimeString().split(' ')[0]);
+
+                                    if (newStartTime < new Date() || newEndTime < new Date()) {
+                                        Alert.alert('Invalid Date', 'The selected date cannot be in the past.');
+                                        return;
+                                    }
                                     
                                     updateEditData('startTime', newStartTime);
                                     updateEditData('endTime', newEndTime);
@@ -416,7 +426,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                         
                        <View style={[styles.timeRow]}>
                             <View style={styles.timeSelector}>
-                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email && !isReadOnly) ? (
+                                {(new Date(editData.startTime) > new Date() && editData.interviewerEmail === auth?.user?.email) ? (
                                     <DateTimePicker
                                         value={new Date(editData?.startTime)}
                                         mode="time"
@@ -442,7 +452,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                                 <Text style={styles.separatorText}>to</Text>
                             </View>
                             <View style={styles.timeSelector}>
-                                {(new Date(editData.endTime) > new Date() && editData.interviewerEmail === auth?.user?.email && !isReadOnly) ? (
+                                {(new Date(editData.startTime) > new Date() && editData.interviewerEmail === auth?.user?.email) ? (
                                     <DateTimePicker
                                         value={new Date(editData?.endTime)}
                                         mode="time"
@@ -512,7 +522,7 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                         </>
                     )}
             
-                    {(selectedInterview.status === 'LOGGED' || new Date(editData.endTime) < new Date()) && (
+                    {(selectedInterview.status === 'LOGGED' || new Date(editData.startTime) < new Date()) && (
                         <>
                             <View style={styles.sectionHeader}>
                                 <Text style={styles.sectionTitle}>Interview Assessment</Text>

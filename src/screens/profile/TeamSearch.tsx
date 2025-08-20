@@ -216,13 +216,8 @@ const TeamSearch = () => {
             )}
 
             {error && (
-                <View style={styles.errorContainer}>
-                    <StatusMessage 
-                        isLoading={false}
-                        isSuccess={false}
-                        loadingMessage=""
-                        resultMessage="Error loading team members!"
-                    />
+               <View style={styles.errorContainer}>
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 

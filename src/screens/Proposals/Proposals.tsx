@@ -376,12 +376,7 @@ const Proposals = () => {
 
             {hasError && !isCreateModalVisible && (
                 <View style={styles.errorContainer}>
-                    <StatusMessage 
-                    isLoading={false}
-                    isSuccess={false}
-                    loadingMessage=""
-                    resultMessage="Error loading proposals. Pull to retry."
-                    />
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
         </SafeAreaView>

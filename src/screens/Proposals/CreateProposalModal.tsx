@@ -279,12 +279,7 @@ const CreateProposalModal = ({ visible, onClose }: {
                 )}
                 {error && (
                     <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage={""}
-                            resultMessage={`Error loading committees`}
-                        />
+                        <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                     </View>
                 )}
             </SafeAreaView>

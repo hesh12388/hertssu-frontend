@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../../../App";
 import { createMeeting } from "../../../services/meetingServices";
 import { CreateMeetingPayload } from "../../../types/meeting";
+import RecurrenceUntilPicker from "../../components/meetings/RecurrenceUntilPicker";
 import TimeSheet from "../../components/TimeSheet";
 import ParticipantPicker from "./ParticipantPicker";
 
@@ -37,10 +38,10 @@ const fmt = (d: Date) =>
 
 const recurrenceOptions = [
   { label: "Does not repeat", value: "" },
-  { label: "Daily", value: "FREQ=DAILY" },
-  { label: "Weekly", value: "FREQ=WEEKLY" },
-  { label: "Monthly", value: "FREQ=MONTHLY" },
-  { label: "Yearly", value: "FREQ=YEARLY" },
+  { label: "Daily", value: "DAILY" },
+  { label: "Weekly", value: "WEEKLY" },
+  { label: "Monthly", value: "MONTHLY" },
+  { label: "Yearly", value: "YEARLY" },
 ];
 const RED = "#E9435E";
 
@@ -69,6 +70,8 @@ const AddMeetingModal: React.FC<Props> = ({
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState("");
+  const [recurrenceUntil, setRecurrenceUntil] = useState<string | null>(null);
+
   const [visibility, setVisibility] = useState("PUBLIC");
 
   const [reminders, setReminders] = useState<number[]>([30]);
@@ -102,6 +105,7 @@ const save = async () => {
     isAllDay: allDay,
     participants: participants.map((p) => p.email), 
     recurrenceRule,
+    recurrenceUntil: recurrenceUntil ?? "",
     reminders: reminders,
   };
 
@@ -358,6 +362,11 @@ const save = async () => {
                       </TouchableOpacity>
                     ))}
                   </View>
+                  <View style={{ flex: 1 }} />
+                  <RecurrenceUntilPicker
+                    recurrenceUntil={recurrenceUntil}
+                    onChangeUntil={setRecurrenceUntil}
+                  />
                 </View>
               </View>
             </ScrollView>

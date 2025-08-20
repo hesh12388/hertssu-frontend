@@ -43,13 +43,6 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
         isFetching
     } = useUsers();
   
-    useEffect(() => {
-        if (!users || users.length === 0) {
-            setFilteredUsers([]);
-            return;
-        }
-        setFilteredUsers(users);
-    }, [users]);
 
     useEffect(() => {
         if (!users || users.length === 0) {
@@ -349,12 +342,7 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
                 )}
                 {error && (
                     <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage={""}
-                            resultMessage={"Error loading users"}
-                        />
+                        <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                     </View>
                 )}
             </SafeAreaView>

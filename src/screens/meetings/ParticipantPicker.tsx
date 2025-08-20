@@ -1,5 +1,6 @@
+import { useUsers } from "@/src/hooks/useUsers";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,33 +43,22 @@ const ParticipantPicker: React.FC<Props> = ({
 
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<UserRow[]>([]);
   const [selected, setSelected] = useState<string[]>(initialSelected);
-
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!api) return;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      try {
-        setLoading(true);
-        const res = await api.get(`/progress/search/users`, {
-          params: { q: query || "", limit: 50 },
-        });
-        console.log("Search results:", res?.data);
-        setResults(res?.data ?? []);
-      } catch (e) {
-        console.error("search users failed:", e);
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 250);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [query, api]);
-
+  const { data: results = [], isLoading: usersLoading, error: errorUsers } = useUsers();
+  
+  
+  const getFilteredUsers = () => {
+    if (!query.trim()) return results;
+    
+      const lowerQuery = query.toLowerCase();
+      return results.filter(
+        (user) =>
+          user.firstName.toLowerCase().includes(lowerQuery) ||
+          user.lastName.toLowerCase().includes(lowerQuery) ||
+          user.email.toLowerCase().includes(lowerQuery)
+      );
+  }
+ 
   const toggle = (u: UserRow) => {
     const email = u.email;
     setSelected((prev) =>
@@ -167,13 +157,18 @@ const ParticipantPicker: React.FC<Props> = ({
           )}
         </View>
 
-        {loading ? (
+        {usersLoading ? (
           <View style={styles.loading}>
             <ActivityIndicator />
           </View>
-        ) : (
+        ) : errorUsers ? (
+           <View style={styles.errorContainer}>
+              <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
+          </View>
+        )
+        : (
           <FlatList
-            data={results}
+            data={getFilteredUsers()}
             keyExtractor={(u) => `${u.id}`}
             renderItem={renderItem}
             keyboardShouldPersistTaps="handled"
@@ -200,6 +195,13 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
     backgroundColor: "#fff",
   },
+  errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
+    },
+  
   headerTitle: { fontSize: 16, fontWeight: "700", color: "#111" },
   headerBtn: {
     backgroundColor: RED,

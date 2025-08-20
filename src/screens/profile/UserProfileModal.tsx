@@ -174,12 +174,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                         </TouchableOpacity>
                     </View>
                     <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage=""
-                            resultMessage="Error loading profile!"
-                        />
+                        <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                     </View>
                 </SafeAreaView>
             </Modal>

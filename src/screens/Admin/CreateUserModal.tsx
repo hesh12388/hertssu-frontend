@@ -69,7 +69,7 @@ const CreateUserModal = ({ visible, onClose }: {
 
     const handleCreateUser = async () => {
         if (!formData.email || !formData.password || !formData.firstName ||
-            !formData.lastName || !formData.role || !formData.committeeId || formData.supervisorId) {
+            !formData.lastName || !formData.role || !formData.committeeId || !formData.supervisorId) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
@@ -321,7 +321,9 @@ const CreateUserModal = ({ visible, onClose }: {
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
                         </View>
-                        {/* Supervisor */}
+                        
+                    </View>
+                    {/* Supervisor */}
                         <View style={styles.inputGroup}>
                             <View style={styles.label}>
                                 <Text style={styles.labelText}>Supervisor</Text>
@@ -413,7 +415,6 @@ const CreateUserModal = ({ visible, onClose }: {
                                 </View>
                             )}
                         </View>
-                </View>
 
                 </ScrollView>
 
@@ -430,12 +431,7 @@ const CreateUserModal = ({ visible, onClose }: {
 
                 {(error || errorUsers) && (
                     <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage={""}
-                            resultMessage={`Error loading committees or users`}
-                        />
+                        <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                     </View>
                 )}
             </SafeAreaView>

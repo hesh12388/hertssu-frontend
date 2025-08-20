@@ -140,13 +140,8 @@ const MyProgress = () => {
                         <Text style={styles.retryButton}>Retry</Text>
                     </TouchableOpacity>
                 </View>
-                <View style={styles.statusOverlay}>
-                    <StatusMessage 
-                        isLoading={false}
-                        isSuccess={false}
-                        loadingMessage=""
-                        resultMessage="Error loading your progress!"
-                    />
+                <View style={styles.errorContainer}>
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             </SafeAreaView>
         );
@@ -338,6 +333,12 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 20,
+    },
+    errorContainer: {
+        padding: 20,
+        backgroundColor: '#ffebee',
+        margin: 10,
+        borderRadius: 8,
     },
     header: {
         flexDirection: "row",

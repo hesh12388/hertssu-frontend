@@ -34,9 +34,11 @@ const TaskDetailsModal = ({
     const auth = useAuth()!;
     const { api }: { api: AxiosInstance } = useAuth()!;
     
-    if (!visible) return null;         
-    if (!selectedTask) return null;      
-    if (!editData) return null;  
+    useEffect(() => {
+        if (selectedTask) {
+            setEditData({ ...selectedTask });
+        }
+    }, [selectedTask]);
 
     // Status message state
     const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: commentsRefetch} = useTaskComments(selectedTask?.id);
@@ -47,15 +49,13 @@ const TaskDetailsModal = ({
     const addCommentMutation = useAddTaskComment();
     const deleteCommentMutation = useDeleteTaskComment();
     const uploadDocumentMutation = useUploadTaskDocument();
-    const deleteDocumentMutation = useDeleteTaskDocument();
+    const deleteDocumentMutation = useDeleteTaskDocument();    
 
 
-    useEffect(() => {
-        if (selectedTask) {
-            setEditData({ ...selectedTask });
-        }
-    }, [selectedTask]);
-    
+    if (!visible) return null;         
+    if (!selectedTask) return null;  
+    if (!editData) return null;      
+
 
     const updateEditData = (field: string, value: any) => {
         setEditData(prev => {
@@ -399,6 +399,10 @@ const TaskDetailsModal = ({
                                         }
                                     }}
                                     onDayPress={day => {
+                                        if (day.dateString < new Date().toISOString().split('T')[0]) {
+                                            Alert.alert('Invalid Date', 'The selected date cannot be in the past.');
+                                            return;
+                                        }
                                         updateEditData('dueDate', day.dateString);
                                         setIsEditCalendarVisible(false);
                                     }}
@@ -628,14 +632,9 @@ const TaskDetailsModal = ({
                 </View>
             )}
             {(commentsError || documentsError) && (
-                    <View style={styles.errorContainer}>
-                        <StatusMessage 
-                            isLoading={false}
-                            isSuccess={false}
-                            loadingMessage={""}
-                            resultMessage={"Error loading comments or documents. Please try again."}
-                        />
-                    </View>
+                <View style={styles.errorContainer}>
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
+                </View>
             )}
         </Modal>
     );

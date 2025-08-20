@@ -401,12 +401,7 @@ const CrossCommitteeRequestDetailsModal = ({
 
             {(hasError) && !showStatus && (
                 <View style={styles.errorContainer}>
-                    <StatusMessage 
-                        isLoading={false}
-                        isSuccess={false}
-                        loadingMessage=""
-                        resultMessage="Error loading data. Pull to retry."
-                    />
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 

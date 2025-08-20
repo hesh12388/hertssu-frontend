@@ -40,7 +40,7 @@ export const useDeleteTask = () => {
             return taskId;
         },
         onSuccess: (deletedTaskId) => {
-            queryClient.setQueryData(['my-tasks'], (old: TaskType[] = []) =>
+            queryClient.setQueryData(['assigned-by-me-tasks'], (old: TaskType[] = []) =>
                 old.filter(task => task.id !== deletedTaskId)
             );
         },

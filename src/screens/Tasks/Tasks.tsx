@@ -129,6 +129,7 @@ const Tasks = () => {
     };
 
     const openTaskDetails = (task: TaskType) => {
+        console.log("Opening task details for:", task);
         setSelectedTask(task);
         setShowTaskDetails(true);
     };
@@ -322,12 +323,7 @@ const Tasks = () => {
 
             {(errorMyTasks || errorAssignedByMe)&& !isCreateModalVisible && !showStatus && (
                 <View style={styles.errorContainer}>
-                    <StatusMessage 
-                    isLoading={false}
-                    isSuccess={false}
-                    loadingMessage=""
-                    resultMessage="Error loading data. Pull to retry."
-                    />
+                    <Text style={{color: 'red'}}>Error loading data. Please try again later.</Text>
                 </View>
             )}
 

@@ -1,7 +1,6 @@
 import { AxiosInstance } from "axios";
 import type { CreateMeetingPayload, MeetingResponseDto } from "../types/meeting";
 
-// --- Helper: turn MeetingResponseDto into a payload ---
 export const mapMeetingToPayload = (
   meeting: MeetingResponseDto
 ): CreateMeetingPayload => ({
@@ -17,7 +16,6 @@ export const mapMeetingToPayload = (
   reminders: meeting.reminders ?? [],
 });
 
-// ---------- NOTES ----------
 
 export type Note = {
   id: string;
@@ -116,15 +114,6 @@ export const getMeetingEvaluations = async (
   return res.data ?? [];
 };
 
-// ---------- OPTIMIZED MEETING SERVICES ----------
-
-interface GetMeetingsInRangeParams {
-  from: string;
-  to: string;
-  offset?: number;
-  limit?: number;
-}
-
 interface PaginatedMeetingsResponse {
   content: MeetingResponseDto[];
   totalElements: number;
@@ -133,10 +122,6 @@ interface PaginatedMeetingsResponse {
   number: number;
 }
 
-/**
- * 🚀 NEW: Optimized getMeetingsInRange with server-side recurrence expansion
- * This is the new endpoint that handles recurring meetings on the backend
- */
 export const getMeetingsInRangeExpanded = async (
   api: AxiosInstance,
   from: string,
@@ -171,10 +156,6 @@ export const getMeetingsInRangeExpanded = async (
   }
 };
 
-/**
- * 🔧 UPDATED: Original getMeetingsInRange (without recurrence expansion)
- * Use this for simple date range queries without recurring meetings
- */
 export const getMeetingsInRange = async (
   api: AxiosInstance,
   from: string,
@@ -187,8 +168,7 @@ export const getMeetingsInRange = async (
       `[meetingServices] 🔎 Fetching meetings: from=${from}, to=${to}, offset=${offset}, limit=${limit}`
     );
 
-    // 🚀 USE NEW OPTIMIZED ENDPOINT WITH SERVER-SIDE RECURRENCE
-    // This automatically handles recurring meetings on the backend
+  
     return await getMeetingsInRangeExpanded(api, from, to, offset, limit);
   } catch (error) {
     console.error("[meetingServices] ❌ Error fetching meetings in range:", error);
@@ -196,9 +176,7 @@ export const getMeetingsInRange = async (
   }
 };
 
-/**
- * Create a new meeting
- */
+
 export const createMeeting = async (api: AxiosInstance, meetingData: any) => {
   try {
     const response = await api.post("/meetings/create", meetingData, {
@@ -302,9 +280,7 @@ export const getTodayMeetings = async (api: AxiosInstance, page: number = 0, siz
   }
 };
 
-/**
- * Get upcoming meetings with optimized pagination
- */
+
 export const getUpcomingMeetings = async (api: AxiosInstance, offset: number = 0, limit: number = 10) => {
   try {
     console.log(`[meetingServices] 🔎 Fetching upcoming meetings: offset=${offset}, limit=${limit}`);
@@ -324,9 +300,7 @@ export const getUpcomingMeetings = async (api: AxiosInstance, offset: number = 0
   }
 };
 
-/**
- * Get meeting history with optimized pagination
- */
+
 export const getHistoryMeetings = async (api: AxiosInstance, offset: number = 0, limit: number = 10) => {
   try {
     console.log(`[meetingServices] 🔎 Fetching meeting history: offset=${offset}, limit=${limit}`);
@@ -346,9 +320,6 @@ export const getHistoryMeetings = async (api: AxiosInstance, offset: number = 0,
   }
 };
 
-/**
- * Get all meetings (use sparingly - not paginated)
- */
 export const getAllMeetings = async (api: AxiosInstance) => {
   try {
     console.log("[meetingServices] 🔎 Fetching all meetings");
@@ -363,9 +334,6 @@ export const getAllMeetings = async (api: AxiosInstance) => {
   }
 };
 
-/**
- * Update a meeting series
- */
 export const updateMeetingSeries = async (api: AxiosInstance, recurrenceId: string, meetingData: any) => {
   try {
     console.log(`[meetingServices] 🔎 Updating meeting series: ${recurrenceId}`, meetingData);
@@ -379,25 +347,3 @@ export const updateMeetingSeries = async (api: AxiosInstance, recurrenceId: stri
     throw error;
   }
 };
-
-// ---------- PERFORMANCE MONITORING ----------
-
-/**
- * 📊 Performance monitoring utility
- */
-export const measureApiCall = async <T>(
-  apiCallName: string,
-  apiCall: () => Promise<T>
-): Promise<T> => {
-  const startTime = performance.now();
-  try {
-    const result = await apiCall();
-    const duration = performance.now() - startTime;
-    console.log(`📊 ${apiCallName} completed in ${duration.toFixed(2)}ms`);
-    return result;
-  } catch (error) {
-    const duration = performance.now() - startTime;
-    console.error(`📊 ${apiCallName} failed in ${duration.toFixed(2)}ms`, error);
-    throw error;
-  }
-}
