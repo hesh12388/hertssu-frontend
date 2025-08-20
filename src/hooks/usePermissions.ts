@@ -18,7 +18,7 @@ export function usePermissions(user: User | null) {
     
     const canSeeTeam = !isMember;
     const canSeeInterviews = isFromCommittee(2) || isHigherLevel;
-    const canSeeProposals = (isFromCommittee(6) || isFromCommittee(8) || isFromCommittee(10) || isHigherLevel) && !isMember;
+    const canSeeProposals = (isFromCommittee(6) || isFromCommittee(8) || isFromCommittee(10) ||isFromCommittee(7) || isHigherLevel) && !isMember;
     
     const canCreateProposals = isChairLevel;
     const canCreateCrossCommitteeRequests = isLeaderLevel;

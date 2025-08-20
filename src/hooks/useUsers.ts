@@ -59,7 +59,8 @@ export const useCreateUserFromRequest = () => {
                 lastName: request.lastName,
                 role: request.role,
                 committeeId: request.committeeId,
-                subcommitteeId: request.subcommitteeId || null
+                subcommitteeId: request.subcommitteeId || null,
+                supervisorId: request.supervisorId ? request.supervisorId : undefined
             };
             
             const userResponse = await api.post('/users', createUserData);
@@ -114,6 +115,7 @@ export const useCreateUser = () => {
             role: string;
             committeeId: number;
             subcommitteeId: number | null;
+            supervisorId?: number | null;
         }) => {
             const response = await api.post('/users', data);
             return response.data;

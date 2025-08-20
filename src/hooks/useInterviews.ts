@@ -47,6 +47,7 @@ export const useCreateInterview = () => {
             subCommitteeId: number | null;
             startTime: string;
             endTime: string;
+            supervisorId?: number | null;
         }) => {
             const response = await api.post('/interviews', data);
             return response.data;

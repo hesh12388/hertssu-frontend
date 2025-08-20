@@ -494,6 +494,24 @@ const DetailsModal = ({visible, selectedInterview, onClose, POSITIONS, isReadOnl
                         </View>
                     </View>
 
+                    {(selectedInterview.supervisorName && selectedInterview.supervisorEmail) && (
+                        <>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Supervisor Information</Text>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <View style={styles.label}>
+                                    <Text style={styles.labelText}>Supervisor</Text>
+                                </View>
+                                <View style={styles.interviewerInfo}>
+                                    <Text style={styles.interviewerName}>{selectedInterview.supervisorName}</Text>
+                                    <Text style={styles.interviewerEmail}>{selectedInterview.supervisorEmail}</Text>
+                                </View>
+                            </View>
+                        </>
+                    )}
+            
                     {(selectedInterview.status === 'LOGGED' || new Date(editData.endTime) < new Date()) && (
                         <>
                             <View style={styles.sectionHeader}>

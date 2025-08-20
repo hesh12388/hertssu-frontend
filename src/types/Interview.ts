@@ -21,6 +21,8 @@ export interface InterviewType {
   notes?: string;
   interviewerName: string;
   interviewerEmail: string;
+  supervisorName?: string;
+  supervisorEmail?: string;
   meetingId?: string;
   joinUrl?: string;
 }

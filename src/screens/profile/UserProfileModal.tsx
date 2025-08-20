@@ -111,8 +111,19 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
         };
     };
 
+    const getAttendanceIssues = () => {
+        if (!profileData?.performanceEvaluations?.length) {
+            return [];
+        }
+
+        return profileData.performanceEvaluations.filter(evaluation => 
+            evaluation.isLate || !evaluation.attendance
+        ).sort((a, b) => new Date(b.meetingDate).getTime() - new Date(a.meetingDate).getTime());
+    };
+
     const chartData = getPerformanceChartData();
     const screenWidth = Dimensions.get('window').width;
+    const attendanceIssues = getAttendanceIssues();
 
     if (isLoading) {
         return (
@@ -279,6 +290,50 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                             </ScrollView>
                         </View>
                     )}
+
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            Attendance Issues ({attendanceIssues.length})
+                        </Text>
+                        {attendanceIssues.length === 0 ? (
+                            <View style={styles.emptySection}>
+                                <Ionicons name="checkmark-circle-outline" size={32} color="#27AE60" />
+                                <Text style={[styles.emptyText, { color: '#27AE60' }]}>
+                                    Perfect attendance record
+                                </Text>
+                            </View>
+                        ) : (
+                            attendanceIssues.slice(0, 5).map((evaluation, index) => (
+                                <View key={`${evaluation.meetingDate}-${index}`} style={styles.attendanceCard}>
+                                    <View style={styles.attendanceHeader}>
+                                        <Text style={styles.attendanceTitle} numberOfLines={1}>
+                                            {evaluation.meetingTitle}
+                                        </Text>
+                                        <View style={styles.attendanceIssues}>
+                                            {!evaluation.attendance && (
+                                                <View style={[styles.issueBadge, { backgroundColor: '#E74C3C' }]}>
+                                                    <Text style={styles.issueBadgeText}>ABSENT</Text>
+                                                </View>
+                                            )}
+                                            {evaluation.isLate && evaluation.attendance && (
+                                                <View style={[styles.issueBadge, { backgroundColor: '#F39C12' }]}>
+                                                    <Text style={styles.issueBadgeText}>LATE</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </View>
+                                    <View style={styles.attendanceMeta}>
+                                        <Text style={styles.attendanceMetaText}>
+                                            Date: {formatDate(evaluation.meetingDate)}
+                                        </Text>
+                                        <Text style={styles.attendanceMetaText}>
+                                            Evaluator: {evaluation.evaluatorName}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))
+                        )}
+                    </View>
 
                     {/* Tasks Section */}
                     <View style={styles.section}>
@@ -577,6 +632,48 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         zIndex: 1000,
+    },
+    attendanceCard: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 8,
+    },
+    attendanceHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    attendanceTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        flex: 1,
+        marginRight: 8,
+    },
+    attendanceIssues: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    issueBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    issueBadgeText: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: 'white',
+    },
+    attendanceMeta: {
+        gap: 2,
+    },
+    attendanceMetaText: {
+        fontSize: 11,
+        color: '#666',
     },
 });
 

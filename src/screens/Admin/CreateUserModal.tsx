@@ -1,5 +1,5 @@
 import { useCommittees } from '@/src/hooks/useCommittees';
-import { useCreateUser } from '@/src/hooks/useUsers';
+import { useCreateUser, useUsers } from '@/src/hooks/useUsers';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -21,7 +21,8 @@ const CreateUserModal = ({ visible, onClose }: {
         lastName: '',
         role: '',
         committeeId: '',
-        subcommitteeId: ''
+        subcommitteeId: '',
+        supervisorId: ''
     });
     
     const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
@@ -32,7 +33,9 @@ const CreateUserModal = ({ visible, onClose }: {
     const [isSuccess, setIsSuccess] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
-
+    const [supervisorSearch, setSupervisorSearch] = useState('');
+    const [showSupervisorDropdown, setShowSupervisorDropdown] = useState(false);
+    const { data: users = [], isLoading: usersLoading, error: errorUsers } = useUsers();
     
      const getSubcommittees = () => {
         if (!formData.committeeId) return [];
@@ -56,14 +59,17 @@ const CreateUserModal = ({ visible, onClose }: {
             lastName: '',
             role: '',
             committeeId: '',
-            subcommitteeId: ''
+            subcommitteeId: '',
+            supervisorId: ''
         });
+        setSupervisorSearch('');
+        setShowSupervisorDropdown(false);
         onClose();
     };
 
     const handleCreateUser = async () => {
         if (!formData.email || !formData.password || !formData.firstName ||
-            !formData.lastName || !formData.role || !formData.committeeId) {
+            !formData.lastName || !formData.role || !formData.committeeId || formData.supervisorId) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
@@ -92,7 +98,8 @@ const CreateUserModal = ({ visible, onClose }: {
             lastName: formData.lastName,
             role: formData.role,
             committeeId: parseInt(formData.committeeId),
-            subcommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null
+            subcommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null,
+            supervisorId: formData.supervisorId ? parseInt(formData.supervisorId) : null
         };
 
         console.log('Creating user with data:', requestBody);
@@ -121,6 +128,20 @@ const CreateUserModal = ({ visible, onClose }: {
                 }, 3000);
             }
         });
+    };
+
+    const getFilteredSupervisors = () => {
+        if (!supervisorSearch.trim()) return users;
+        
+        return users.filter(user => 
+            `${user.firstName} ${user.lastName}`.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+            user.email.toLowerCase().includes(supervisorSearch.toLowerCase())
+        );
+    };
+
+    const getSelectedSupervisor = () => {
+        if (!formData.supervisorId) return null;
+        return users.find(user => user.id.toString() === formData.supervisorId);
     };
     const ROLE_OPTIONS = [
         { label: 'Chairperson', value: 'CHAIR_PERSON' },
@@ -300,6 +321,98 @@ const CreateUserModal = ({ visible, onClose }: {
                                 Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
                             />
                         </View>
+                        {/* Supervisor */}
+                        <View style={styles.inputGroup}>
+                            <View style={styles.label}>
+                                <Text style={styles.labelText}>Supervisor</Text>
+                                <Text style={styles.labelOptional}>(Optional)</Text>
+                            </View>
+                            
+                            {/* Search Input */}
+                            <TouchableOpacity 
+                                onPress={() => setShowSupervisorDropdown(!showSupervisorDropdown)}
+                                style={styles.supervisorSelector}
+                            >
+                                <Text style={[
+                                    styles.supervisorSelectorText, 
+                                    !getSelectedSupervisor() && styles.placeholderText
+                                ]}>
+                                    {getSelectedSupervisor() 
+                                        ? `${getSelectedSupervisor()?.firstName} ${getSelectedSupervisor()?.lastName}`
+                                        : "Select supervisor..."
+                                    }
+                                </Text>
+                                <Ionicons 
+                                    name={showSupervisorDropdown ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color="#666" 
+                                />
+                            </TouchableOpacity>
+                            
+                            {/* Dropdown */}
+                            {showSupervisorDropdown && (
+                                <View style={styles.supervisorDropdown}>
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        value={supervisorSearch}
+                                        onChangeText={setSupervisorSearch}
+                                        placeholder="Search supervisors..."
+                                        placeholderTextColor="#999"
+                                        autoCapitalize="none"
+                                    />
+                                    
+                                    <ScrollView style={styles.supervisorList} keyboardShouldPersistTaps="handled">
+                                        {usersLoading ? (
+                                            <View style={styles.loadingContainer}>
+                                                <Text style={styles.loadingText}>Loading users...</Text>
+                                            </View>
+                                        ) : getFilteredSupervisors().length === 0 ? (
+                                            <View style={styles.emptyContainer}>
+                                                <Text style={styles.emptyText}>No supervisors found</Text>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <TouchableOpacity
+                                                    style={styles.supervisorOption}
+                                                    onPress={() => {
+                                                        updateFormData('supervisorId', '');
+                                                        setSupervisorSearch('');
+                                                        setShowSupervisorDropdown(false);
+                                                    }}
+                                                >
+                                                    <Text style={styles.clearOptionText}>Clear selection</Text>
+                                                </TouchableOpacity>
+                                                
+                                                {getFilteredSupervisors().map((user) => (
+                                                    <TouchableOpacity
+                                                        key={user.id}
+                                                        style={[
+                                                            styles.supervisorOption,
+                                                            formData.supervisorId === user.id.toString() && styles.selectedOption
+                                                        ]}
+                                                        onPress={() => {
+                                                            updateFormData('supervisorId', user.id.toString());
+                                                            setSupervisorSearch('');
+                                                            setShowSupervisorDropdown(false);
+                                                        }}
+                                                    >
+                                                        <View style={styles.supervisorOptionContent}>
+                                                            <Text style={styles.supervisorName}>
+                                                                {user.firstName} {user.lastName}
+                                                            </Text>
+                                                            <Text style={styles.supervisorEmail}>{user.email}</Text>
+                                                        </View>
+                                                        {formData.supervisorId === user.id.toString() && (
+                                                            <Ionicons name="checkmark" size={20} color="#E9435E" />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </>
+                                        )}
+                                    </ScrollView>
+                                </View>
+                            )}
+                        </View>
                 </View>
 
                 </ScrollView>
@@ -315,13 +428,13 @@ const CreateUserModal = ({ visible, onClose }: {
                     </View>
                 )}
 
-                {error && (
+                {(error || errorUsers) && (
                     <View style={styles.errorContainer}>
                         <StatusMessage 
                             isLoading={false}
                             isSuccess={false}
                             loadingMessage={""}
-                            resultMessage={`Error loading committees`}
+                            resultMessage={`Error loading committees or users`}
                         />
                     </View>
                 )}
@@ -415,6 +528,85 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
         borderColor: '#ccc',
     },
+    supervisorSelector: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 12,
+        padding: 12,
+        backgroundColor: '#fff',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    supervisorSelectorText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    placeholderText: {
+        color: '#999',
+    },
+    supervisorDropdown: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        marginTop: 8,
+        maxHeight: 250,
+    },
+    searchInput: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        padding: 12,
+        fontSize: 16,
+    },
+    supervisorList: {
+        maxHeight: 200,
+    },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    loadingText: {
+        color: '#666',
+        fontSize: 14,
+    },
+    emptyContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#666',
+        fontSize: 14,
+    },
+    supervisorOption: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    selectedOption: {
+        backgroundColor: '#f8f9fa',
+    },
+    supervisorOptionContent: {
+        flex: 1,
+    },
+    supervisorName: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    supervisorEmail: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
+    },
+    clearOptionText: {
+        fontSize: 16,
+        color: '#E9435E',
+        fontStyle: 'italic',
+    },
 });
 
 const pickerSelectStyles = {
@@ -435,7 +627,7 @@ const pickerSelectStyles = {
     iconContainer: {
         right: 15,
         top: 13
-    }
+    },
 };
 
 export default CreateUserModal;

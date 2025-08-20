@@ -32,6 +32,8 @@ export interface PerformanceEvaluation {
     evaluatorName: string;
     createdAt: string;
     notes?: string;
+    isLate:boolean;
+    attendance:boolean;
 }
 
 export interface WarningSummary {

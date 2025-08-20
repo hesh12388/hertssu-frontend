@@ -50,4 +50,5 @@ export interface AccountRequestDTO {
     phoneNumber: string;
     requestedAt: string;
     notes?: string;
+    supervisorId?: number | null;
 }

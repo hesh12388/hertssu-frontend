@@ -1,5 +1,6 @@
 import { useCommittees } from '@/src/hooks/useCommittees';
 import { useCreateInterview } from '@/src/hooks/useInterviews';
+import { useUsers } from '@/src/hooks/useUsers';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
@@ -20,7 +21,8 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
             subcommitteeId: '',
             date: new Date().toISOString().split('T')[0],
             startTime: new Date(),
-            endTime: new Date()
+            endTime: new Date(),
+            supervisorId: ''
         });
     const [showStatus, setShowStatus] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -29,11 +31,27 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
     const [resultMessage, setResultMessage] = useState("");
     const createInterviewMutation = useCreateInterview();
     const { data: committees = [], isLoading: committeesLoading, error } = useCommittees();
+    const { data: users = [], isLoading: usersLoading, error: errorUsers } = useUsers();
+    const [supervisorSearch, setSupervisorSearch] = useState('');
+    const [showSupervisorDropdown, setShowSupervisorDropdown] = useState(false);
 
     const getSubcommittees = () => {
         if (!formData.committeeId) return [];
         const selectedCommittee = committees.find(c => c.id.toString() === formData.committeeId);
         return selectedCommittee?.subcommittees || [];
+    };
+    const getFilteredSupervisors = () => {
+        if (!supervisorSearch.trim()) return users;
+        
+        return users.filter(user => 
+            `${user.firstName} ${user.lastName}`.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+            user.email.toLowerCase().includes(supervisorSearch.toLowerCase())
+        );
+    };
+
+    const getSelectedSupervisor = () => {
+        if (!formData.supervisorId) return null;
+        return users.find(user => user.id.toString() === formData.supervisorId);
     };
             
     const updateFormData = (field: string, value: any) => {
@@ -56,8 +74,11 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
             subcommitteeId: '',
             date:new Date().toISOString().split('T')[0],
             startTime: new Date(),
-            endTime: new Date()
+            endTime: new Date(),
+            supervisorId: ''
         });
+        setSupervisorSearch('');
+        setShowSupervisorDropdown(false);
         onClose();
     };
 
@@ -78,7 +99,7 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
 
 
     const handleScheduleInterview = async () => {
-        if (!formData.name || !formData.gafEmail || !formData.position || !formData.committeeId || !formData.date || !formData.startTime || !formData.endTime) {
+        if (!formData.name || !formData.gafEmail || !formData.position || !formData.committeeId || !formData.date || !formData.startTime || !formData.endTime || !formData.supervisorId) {
             console.log('Form data is incomplete:', formData);
             Alert.alert('Error', 'Please fill in all required fields');
             return;
@@ -106,7 +127,8 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
             committeeId: parseInt(formData.committeeId),                         
             subCommitteeId: formData.subcommitteeId ? parseInt(formData.subcommitteeId) : null,
             startTime: startDateTime,
-            endTime: endDateTime
+            endTime: endDateTime,
+            supervisorId: parseInt(formData.supervisorId) 
         };
 
         console.log('Scheduling interview with data:', requestBody);
@@ -296,6 +318,85 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
                                 />
                             </View>
                         </View>
+                        {/* Supervisor */}
+                        <View style={styles.inputGroup}>
+                            <View style={styles.label}>
+                                <Text style={styles.labelText}>Interview Supervisor</Text>
+                                <Text style={styles.labelRequirement}>*</Text>
+                            </View>
+                            
+                            {/* Supervisor Selector */}
+                            <TouchableOpacity 
+                                onPress={() => setShowSupervisorDropdown(!showSupervisorDropdown)}
+                                style={styles.supervisorSelector}
+                            >
+                                <Text style={[
+                                    styles.supervisorSelectorText, 
+                                    !getSelectedSupervisor() && styles.placeholderText
+                                ]}>
+                                    {getSelectedSupervisor() 
+                                        ? `${getSelectedSupervisor()?.firstName} ${getSelectedSupervisor()?.lastName}`
+                                        : "Select supervisor..."
+                                    }
+                                </Text>
+                                <Ionicons 
+                                    name={showSupervisorDropdown ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color="#666" 
+                                />
+                            </TouchableOpacity>
+                            
+                            {/* Dropdown */}
+                            {showSupervisorDropdown && (
+                                <View style={styles.supervisorDropdown}>
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        value={supervisorSearch}
+                                        onChangeText={setSupervisorSearch}
+                                        placeholder="Search supervisors..."
+                                        placeholderTextColor="#999"
+                                        autoCapitalize="none"
+                                    />
+                                    
+                                    <ScrollView style={styles.supervisorList} keyboardShouldPersistTaps="handled">
+                                        {usersLoading ? (
+                                            <View style={styles.loadingContainer}>
+                                                <Text style={styles.loadingText}>Loading users...</Text>
+                                            </View>
+                                        ) : getFilteredSupervisors().length === 0 ? (
+                                            <View style={styles.emptyContainer}>
+                                                <Text style={styles.emptyText}>No supervisors found</Text>
+                                            </View>
+                                        ) : (
+                                            getFilteredSupervisors().map((user) => (
+                                                <TouchableOpacity
+                                                    key={user.id}
+                                                    style={[
+                                                        styles.supervisorOption,
+                                                        formData.supervisorId === user.id.toString() && styles.selectedOption
+                                                    ]}
+                                                    onPress={() => {
+                                                        updateFormData('supervisorId', user.id.toString());
+                                                        setSupervisorSearch('');
+                                                        setShowSupervisorDropdown(false);
+                                                    }}
+                                                >
+                                                    <View style={styles.supervisorOptionContent}>
+                                                        <Text style={styles.supervisorName}>
+                                                            {user.firstName} {user.lastName}
+                                                        </Text>
+                                                        <Text style={styles.supervisorEmail}>{user.email}</Text>
+                                                    </View>
+                                                    {formData.supervisorId === user.id.toString() && (
+                                                        <Ionicons name="checkmark" size={20} color="#E9435E" />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))
+                                        )}
+                                    </ScrollView>
+                                </View>
+                            )}
+                        </View>
                         {/* Date */}
                         <View style={styles.inputGroup}>
                             <View style={styles.label}>
@@ -415,13 +516,13 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
                         </View>
                     )}
 
-                    {error && (
+                    {(error || errorUsers) && (
                         <View style={styles.errorContainer}>
                             <StatusMessage 
                                 isLoading={false}
                                 isSuccess={false}
                                 loadingMessage={""}
-                                resultMessage={`Error loading committees`}
+                                resultMessage={`Error loading committees or users`}
                             />
                         </View>
                     )}
@@ -544,6 +645,80 @@ const styles = StyleSheet.create({
     },
     disabledText: {
         color: '#ccc',
+    },
+    supervisorSelector: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 12,
+        padding: 12,
+        backgroundColor: '#fff',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    supervisorSelectorText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    placeholderText: {
+        color: '#999',
+    },
+    supervisorDropdown: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        marginTop: 8,
+        maxHeight: 250,
+    },
+    searchInput: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        padding: 12,
+        fontSize: 16,
+    },
+    supervisorList: {
+        maxHeight: 200,
+    },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    loadingText: {
+        color: '#666',
+        fontSize: 14,
+    },
+    emptyContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#666',
+        fontSize: 14,
+    },
+    supervisorOption: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    selectedOption: {
+        backgroundColor: '#f8f9fa',
+    },
+    supervisorOptionContent: {
+        flex: 1,
+    },
+    supervisorName: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    supervisorEmail: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
     },
 })
 
