@@ -35,7 +35,6 @@ export default function TimeSheet({
   const [temp, setTemp] = useState(initial);
   const [showCustom, setShowCustom] = useState(false);
 
-  // Defensive: ensure quickBase is always a valid Date
   const quickBase = (quickFrom instanceof Date ? quickFrom : undefined) ?? (initial instanceof Date ? initial : new Date());
 
   const quicks = [
@@ -55,7 +54,9 @@ export default function TimeSheet({
   };
 
   const confirmCustom = () => {
-    onPick(temp);
+    const min = minimumDate ?? new Date();
+    const chosen = temp < min ? min : temp;
+    onPick(chosen); 
     onClose();
   };
 
@@ -130,18 +131,17 @@ export default function TimeSheet({
             {showCustom && (
               <View style={styles.customWrap}>
                 <View style={styles.pickerContainer}>
-                  <DateTimePicker
-                    value={temp}
-                    mode={Platform.OS === "ios" ? "datetime" : "date"}
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    minimumDate={minimumDate}
-                    onChange={(e, d) => d && setTemp(d)}
-                    minuteInterval={5}
-                    style={styles.picker}
-                    // Ensure dark text on iOS
-                    textColor={Platform.OS === "ios" ? "#000000" : undefined}
-                    themeVariant="light"
-                  />
+                <DateTimePicker
+                  value={temp}
+                  mode={Platform.OS === "ios" ? "datetime" : "date"}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  minimumDate={minimumDate ?? new Date()}
+                  onChange={(e, d) => d && setTemp(d)}
+                  minuteInterval={5}
+                  style={styles.picker}
+                  textColor={Platform.OS === "ios" ? "#000000" : undefined}
+                  themeVariant="light"
+                />
                 </View>
               </View>
             )}
