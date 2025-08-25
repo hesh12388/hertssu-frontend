@@ -457,7 +457,7 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
                             
                             <View style={styles.timeRow}>
                                 {/* Start Time */}
-                               
+                
                                 <View style={styles.timeSelector}>
                                     <DateTimePicker
                                         style= {{marginLeft:-10}}
@@ -467,7 +467,6 @@ const ScheduleModal = ({POSITIONS, onClose, visible}: {POSITIONS: { label: strin
                                         onChange={(event, time) => {
                                             
                                             if (time) {
-                                                
                                                 updateFormData('startTime', time);
                                             }
                                         }}

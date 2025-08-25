@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '../hooks/usePermissions';
 import Users from '../screens/Admin/Users';
 import Interview from '../screens/Interviews/Interview';
-import MeetingsHome from '../screens/meetings/MeetingsHome';
+import Meetings from '../screens/meetings/Meeting';
 import MyProgress from '../screens/MyProgress/MyProgress';
 import TeamSearch from '../screens/profile/TeamSearch';
 import Proposals from '../screens/Proposals/Proposals';
@@ -118,7 +118,7 @@ const AppNavigator = () => {
     >
       <Drawer.Screen name="MyProgress" component={MyProgress} />
       <Drawer.Screen name="Interviews" component={Interview}/>
-      <Drawer.Screen name="Meetings" component={MeetingsHome}/>
+      <Drawer.Screen name="Meetings" component={Meetings}/>
       <Drawer.Screen name="Tasks" component={Tasks}/>
       <Drawer.Screen name="Proposals" component={Proposals}/>
       <Drawer.Screen name="Admin" component={Users} />

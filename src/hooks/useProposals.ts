@@ -57,10 +57,10 @@ export const useUpdateProposal = () => {
         },
         onSuccess: (updatedProposal) => {
             // Update all relevant caches
-            queryClient.setQueryData(['my-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'my'], (old: ProposalType[] = []) =>
                 old.map(p => p.id === updatedProposal.id ? updatedProposal : p)
             );
-            queryClient.setQueryData(['all-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'all'], (old: ProposalType[] = []) =>
                 old.map(p => p.id === updatedProposal.id ? updatedProposal : p)
             );
         },
@@ -78,14 +78,14 @@ export const useUpdateProposalStatus = () => {
         },
         onSuccess: (updatedProposal:ProposalType) => {
             // Update all relevant caches
-            queryClient.setQueryData(['my-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'my'], (old: ProposalType[] = []) =>
                 old.map(p => p.id === updatedProposal.id ? updatedProposal : p)
             );
-            queryClient.setQueryData(['all-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'all'], (old: ProposalType[] = []) =>
                 old.map(p => p.id === updatedProposal.id ? updatedProposal : p)
             );
             // update cross-committee requests if they reference this proposal
-            queryClient.setQueryData(['cross-committee-requests'], (old: CrossCommitteeRequestType[] = []) =>
+            queryClient.setQueryData(['proposal-cross-committee-requests', updatedProposal.id], (old: CrossCommitteeRequestType[] = []) =>
                 old.map(r => r.proposalId === updatedProposal.id ? { ...r, status: updatedProposal.status } : r)
             );
         },
@@ -103,14 +103,14 @@ export const useDeleteProposal = () => {
         },
         onSuccess: (deletedProposalId) => {
             // Remove from all relevant caches
-            queryClient.setQueryData(['my-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'my'], (old: ProposalType[] = []) =>
                 old.filter(p => p.id !== deletedProposalId)
             );
-            queryClient.setQueryData(['all-proposals'], (old: ProposalType[] = []) =>
+            queryClient.setQueryData(['proposals', 'all'], (old: ProposalType[] = []) =>
                 old.filter(p => p.id !== deletedProposalId)
             );
             // remove related cross-committee requests
-            queryClient.setQueryData(['cross-committee-requests'], (old: CrossCommitteeRequestType[] = []) =>
+            queryClient.setQueryData(['proposal-cross-committee-requests', deletedProposalId], (old: CrossCommitteeRequestType[] = []) =>
                 old.filter(r => r.proposalId !== deletedProposalId)
             );
         },
@@ -127,8 +127,8 @@ export const useCreateProposal = () => {
             return response.data;
         },
         onSuccess: (newProposal) => {
-            queryClient.setQueryData(['my-proposals'], (old: ProposalType[] = []) => [newProposal, ...old]);
-            queryClient.setQueryData(['all-proposals'], (old: ProposalType[] = []) => [newProposal, ...old]);
+            queryClient.setQueryData(['proposals', 'my'], (old: ProposalType[] = []) => [newProposal, ...old]);
+            queryClient.setQueryData(['proposals', 'all'], (old: ProposalType[] = []) => [newProposal, ...old]);
         },
     });
 };

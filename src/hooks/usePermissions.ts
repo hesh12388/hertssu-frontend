@@ -21,10 +21,6 @@ export function usePermissions(user: User | null) {
     const canSeeProposals = (isFromCommittee(6) || isFromCommittee(8) || isFromCommittee(10) ||isFromCommittee(7) || isHigherLevel) && !isMember;
     
     const canCreateProposals = isChairLevel;
-    const canCreateCrossCommitteeRequests = isLeaderLevel;
-    const canRespondToProposals = isChairLevel || isLeaderLevel;
-    const canRespondToCrossCommitteeRequests = isChairLevel || isLeaderLevel;
-    const hasReadOnlyAccess = isHigherLevel;
     
     
     const showAssignedProposals = isChairLevel;
@@ -53,13 +49,7 @@ export function usePermissions(user: User | null) {
         isHigherLevel,
         
        
-        canCreateProposals,
-        canCreateCrossCommitteeRequests,
-        canRespondToProposals,
-        canRespondToCrossCommitteeRequests,
-        hasReadOnlyAccess,
-        
-        
+        canCreateProposals,        
         showAssignedProposals,
         showMyProposals,
         showAllProposals,

@@ -15,8 +15,8 @@ export interface UserProfileResponse {
 export interface TaskSummary {
     id: number;
     title: string;
-    status: 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED' | 'CANCELLED';
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    status: 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED';
+    priority: 'LOW' | 'MEDIUM' | 'HIGH';
     dueDate: string;
     createdAt: string;
     submittedAt?: string;
@@ -27,13 +27,12 @@ export interface PerformanceEvaluation {
     meetingTitle: string;
     meetingDate: string;
     performance: number;
-    communication: number;
-    teamwork: number;
     evaluatorName: string;
     createdAt: string;
-    notes?: string;
+    note: string;
     isLate:boolean;
     attendance:boolean;
+    hasException: boolean;
 }
 
 export interface WarningSummary {
@@ -46,9 +45,10 @@ export interface WarningSummary {
 }
 
 export interface PerformanceStats {
-    avgTeamwork: number;
     avgPerformance: number;
-    avgCommunication: number;
-    overallAverage: number;
     totalEvaluations: number;
+    totalAbsences: number;
+    totalLateArrivals: number;
+    totalExceptions: number;
+    attendanceRate: number;
 }

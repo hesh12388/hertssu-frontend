@@ -139,11 +139,7 @@ export const useCreateCrossCommitteeRequest = () => {
                 ['proposal-cross-committee-requests', proposalId],
                 (old: CrossCommitteeRequestType[] = []) => [newRequest, ...old]
             );
-        
-            queryClient.setQueryData(
-                ['cross-committee-requests'],
-                (old: CrossCommitteeRequestType[] = []) => [newRequest, ...old]
-            );
+        ;
         },
     });
 };

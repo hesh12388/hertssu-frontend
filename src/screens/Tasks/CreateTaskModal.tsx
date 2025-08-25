@@ -118,12 +118,23 @@ const CreateTaskModal = ({ visible, onClose}: {
         });
     };
     const getFilteredUsers = () => {
-        if (!userSearchText) return assignableUsers;
+        let filtered = assignableUsers;
         
-        return assignableUsers.filter(user => 
-            getFullName(user).toLowerCase().includes(userSearchText.toLowerCase()) ||
-            user.email.toLowerCase().includes(userSearchText.toLowerCase())
-        );
+        if (userSearchText) {
+            filtered = assignableUsers.filter(user => 
+                getFullName(user).toLowerCase().includes(userSearchText.toLowerCase()) ||
+                user.email.toLowerCase().includes(userSearchText.toLowerCase())
+            );
+        }
+        
+        if (formData.assigneeId) {
+            const selectedUser = assignableUsers.find(user => user.id.toString() === formData.assigneeId);
+            if (selectedUser && !filtered.some(user => user.id.toString() === formData.assigneeId)) {
+                filtered = [selectedUser, ...filtered];
+            }
+        }
+        
+        return filtered;
     };
 
     const PRIORITY_OPTIONS = [
@@ -227,28 +238,40 @@ const CreateTaskModal = ({ visible, onClose}: {
                                     </Text>
                                 </View>
                             ) : (
-                                getFilteredUsers().slice(0, 5).map((user) => (
-                                    <TouchableOpacity
-                                        key={user.id}
-                                        style={[
-                                            styles.userItem,
-                                            formData.assigneeId === user.id.toString() && styles.selectedUserItem
-                                        ]}
-                                        onPress={() => {
-                                            updateFormData('assigneeId', user.id.toString());
-                                            setUserSearchText('');
-                                        }}
-                                    >
-                                        <View style={styles.userInfo}>
-                                            <Text style={styles.userName}>{getFullName(user)}</Text>
-                                            <Text style={styles.userEmail}>{user.email}</Text>
-                                            <Text style={styles.userRole}>{user.role}</Text>
-                                        </View>
-                                        {formData.assigneeId === user.id.toString() && (
-                                            <Ionicons name="checkmark-circle" size={24} color="#E9435E" />
-                                        )}
-                                    </TouchableOpacity>
-                                ))
+                                (() => {
+                                        const filtered = getFilteredUsers();
+                                        const selectedUserId = formData.assigneeId;
+                                        
+                                        const selectedUser = selectedUserId ? assignableUsers.find(user => user.id.toString() === selectedUserId) : null;
+                                        const otherUsers = filtered.filter(user => user.id.toString() !== selectedUserId);
+                                      
+                                        const usersToShow = selectedUser 
+                                            ? [selectedUser, ...otherUsers.slice(0, 4)]
+                                            : filtered.slice(0, 5);
+                                        
+                                        return usersToShow.map((user) => (
+                                            <TouchableOpacity
+                                                key={user.id}
+                                                style={[
+                                                    styles.userItem,
+                                                    formData.assigneeId === user.id.toString() && styles.selectedUserItem
+                                                ]}
+                                                onPress={() => {
+                                                    updateFormData('assigneeId', user.id.toString());
+                                                    setUserSearchText('');
+                                                }}
+                                            >
+                                                <View style={styles.userInfo}>
+                                                    <Text style={styles.userName}>{getFullName(user)}</Text>
+                                                    <Text style={styles.userEmail}>{user.email}</Text>
+                                                    <Text style={styles.userRole}>{user.role}</Text>
+                                                </View>
+                                                {formData.assigneeId === user.id.toString() && (
+                                                    <Ionicons name="checkmark-circle" size={24} color="#E9435E" />
+                                                )}
+                                            </TouchableOpacity>
+                                        ));
+                                    })()
                             )}
                         </ScrollView>
                     </View>

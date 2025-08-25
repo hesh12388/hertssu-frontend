@@ -39,8 +39,6 @@ const CrossCommitteeRequestDetailsModal = ({
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    if (!visible) return null;
-    if (!selectedRequest) return null;
 
     const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: fetchComments} = useCrossCommitteeComments(selectedRequest?.id);
     const { data: documents = [], isLoading: documentsLoading, error: documentsErro, isFetching: documentsFetching, refetch: fetchDocuments } = useCrossCommitteeDocuments(selectedRequest?.id);
@@ -53,6 +51,9 @@ const CrossCommitteeRequestDetailsModal = ({
     const uploadDocumentMutation = useUploadCrossCommitteeDocument();
     const deleteDocumentMutation = useDeleteCrossCommitteeDocument();
 
+
+    if (!visible) return null;
+    if (!selectedRequest) return null;
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;

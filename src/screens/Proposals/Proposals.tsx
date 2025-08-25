@@ -29,7 +29,7 @@ const Proposals = () => {
         error: errorMy,
         refetch: refetchMy,
         isFetching: isFetchingMyProposals
-    } = useMyProposals(permissions.showMyProposals);
+    } = useMyProposals(permissions.showMyProposals || permissions.showAssignedProposals);
 
     const { 
         data: allProposals = [], 
@@ -113,6 +113,7 @@ const Proposals = () => {
     };;
 
     const openProposalDetails = (proposal: ProposalType) => {
+        console.log('Opening proposal details:', proposal);
         setSelectedProposal(proposal);
         setShowProposalDetails(true);
     };
@@ -280,7 +281,7 @@ const Proposals = () => {
                     <RefreshControl 
                         refreshing={isFetching} 
                         onRefresh={() => {
-                            if (permissions.showMyProposals) refetchMy();
+                            if (permissions.showMyProposals || permissions.showAssignedProposals) refetchMy();
                             if (permissions.showAllProposals) refetchAll();
                             if (permissions.showCrossCommitteeRequests) refetchCross();
                         }}

@@ -42,12 +42,15 @@ const ProposalDetailsModal = ({
     const [statusMessage, setStatusMessage] = useState('');
     const [resultMessage, setResultMessage] = useState('');
 
-    if (!visible) return null;
-    if (!selectedProposal) return null;
-    if (!editData) return null;
+    useEffect(() => {
+        if (selectedProposal) {
+            setEditData({ ...selectedProposal });
+        }
+    }, [selectedProposal]);
 
-    const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: fetchComments } = useProposalComments(selectedProposal.id);
-    const { data: documents = [], isLoading: documentsLoading, error: documentsError, isFetching: documentsFetching, refetch: fetchDocuments } = useProposalDocuments(selectedProposal.id);
+    
+    const { data: comments = [], isLoading: commentsLoading, error: commentsError, isFetching: commentsFetching, refetch: fetchComments } = useProposalComments(selectedProposal?.id);
+    const { data: documents = [], isLoading: documentsLoading, error: documentsError, isFetching: documentsFetching, refetch: fetchDocuments } = useProposalDocuments(selectedProposal?.id);
     const { data: crossCommitteeRequests = [], isLoading: crossCommitteeLoading, error: crossCommitteeError, isFetching: crossCommitteeFetching, refetch: fetchCrossCommittee } = useProposalCrossCommitteeRequests(selectedProposal?.id);
 
     const hasError = commentsError || documentsError || crossCommitteeError;
@@ -63,11 +66,9 @@ const ProposalDetailsModal = ({
     const updateStatusMutation = useUpdateProposalStatus();
     const deleteProposalMutation = useDeleteProposal();
 
-    useEffect(() => {
-        if (selectedProposal) {
-            setEditData({ ...selectedProposal });
-        }
-    }, [selectedProposal]);
+    if (!visible) return null;
+    if (!selectedProposal) return null;
+    if (!editData) return null;
 
     const updateEditData = (field: string, value: any) => {
         setEditData(prev => {

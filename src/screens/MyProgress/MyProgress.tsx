@@ -91,18 +91,8 @@ const MyProgress = () => {
                     color: () => '#E74C3C',
                     strokeWidth: 2
                 },
-                {
-                    data: evaluations.map(evaluation => evaluation.communication),
-                    color: () => '#3498DB',
-                    strokeWidth: 2
-                },
-                {
-                    data: evaluations.map(evaluation => evaluation.teamwork),
-                    color: () => '#27AE60',
-                    strokeWidth: 2
-                }
             ],
-            legend: ['Performance', 'Communication', 'Teamwork']
+            legend: ['Performance']
         };
     };
 
@@ -193,27 +183,27 @@ const MyProgress = () => {
                         <View style={styles.statsGrid}>
                             <View style={styles.statItem}>
                                 <Text style={styles.statValue}>
-                                    {profileData.performanceStats.overallAverage.toFixed(1)}/5
-                                </Text>
-                                <Text style={styles.statLabel}>Overall</Text>
-                            </View>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>
                                     {profileData.performanceStats.avgPerformance.toFixed(1)}/5
                                 </Text>
                                 <Text style={styles.statLabel}>Performance</Text>
                             </View>
                             <View style={styles.statItem}>
                                 <Text style={styles.statValue}>
-                                    {profileData.performanceStats.avgCommunication.toFixed(1)}/5
+                                    {profileData.performanceStats.totalAbsences.toFixed(0)}
                                 </Text>
-                                <Text style={styles.statLabel}>Communication</Text>
+                                <Text style={styles.statLabel}>Total Absences</Text>
                             </View>
                             <View style={styles.statItem}>
                                 <Text style={styles.statValue}>
-                                    {profileData.performanceStats.avgTeamwork.toFixed(1)}/5
+                                    {profileData.performanceStats.totalLateArrivals.toFixed(0)}
                                 </Text>
-                                <Text style={styles.statLabel}>Teamwork</Text>
+                                <Text style={styles.statLabel}>Total Lateness</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statValue}>
+                                    {profileData.performanceStats.totalExceptions.toFixed(0)}
+                                </Text>
+                                <Text style={styles.statLabel}>Total Exceptions</Text>
                             </View>
                         </View>
                     </View>
@@ -420,7 +410,7 @@ const styles = StyleSheet.create({
     statsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 6,
     },
     statItem: {
         flex: 1,

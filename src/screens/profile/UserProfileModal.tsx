@@ -4,6 +4,7 @@ import React from 'react';
 import {
     Dimensions,
     Modal,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -25,7 +26,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
         data: profileData, 
         isLoading, 
         error, 
-        refetch 
+        refetch,
+        isFetching
     } = useUserProfile(userId, visible);
 
     const handleClose = () => {
@@ -52,7 +54,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
             'IN_PROGRESS': '#F39C12',
             'PENDING_REVIEW': '#3498DB',
             'COMPLETED': '#27AE60',
-            'CANCELLED': '#E74C3C'
         };
         return colors[status] || '#95A5A6';
     };
@@ -62,7 +63,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
             'LOW': '#27AE60',
             'MEDIUM': '#F39C12',
             'HIGH': '#E67E22',
-            'URGENT': '#E74C3C'
         };
         return colors[priority] || '#95A5A6';
     };
@@ -96,18 +96,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                     color: () => '#E74C3C',
                     strokeWidth: 2
                 },
-                {
-                    data: evaluations.map(evaluation => evaluation.communication),
-                    color: () => '#3498DB',
-                    strokeWidth: 2
-                },
-                {
-                    data: evaluations.map(evaluation => evaluation.teamwork),
-                    color: () => '#27AE60',
-                    strokeWidth: 2
-                }
             ],
-            legend: ['Performance', 'Communication', 'Teamwork']
+            legend: ['Performance']
         };
     };
 
@@ -203,7 +193,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                     <View style={{ width: 24 }} />
                 </View>
 
-                <ScrollView style={styles.modalContent}>
+                <ScrollView style={styles.modalContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isFetching}
+                            onRefresh={refetch}
+                            colors={['#E9435E']}
+                            progressBackgroundColor="#fff"
+                        />
+                    }
+                >
                     {/* User Info Header */}
                     <View style={styles.userHeader}>
                         <View style={styles.userAvatar}>
@@ -229,27 +228,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                             <View style={styles.statsGrid}>
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>
-                                        {profileData.performanceStats.overallAverage.toFixed(1)}/5
-                                    </Text>
-                                    <Text style={styles.statLabel}>Overall</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>
                                         {profileData.performanceStats.avgPerformance.toFixed(1)}/5
                                     </Text>
                                     <Text style={styles.statLabel}>Performance</Text>
                                 </View>
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>
-                                        {profileData.performanceStats.avgCommunication.toFixed(1)}/5
+                                        {profileData.performanceStats.totalAbsences.toFixed(0)}
                                     </Text>
-                                    <Text style={styles.statLabel}>Communi-cation</Text>
+                                    <Text style={styles.statLabel}>Total Absences</Text>
                                 </View>
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>
-                                        {profileData.performanceStats.avgTeamwork.toFixed(1)}/5
+                                        {profileData.performanceStats.totalLateArrivals.toFixed(0)}
                                     </Text>
-                                    <Text style={styles.statLabel}>Teamwork</Text>
+                                    <Text style={styles.statLabel}>Total Lateness</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>
+                                        {profileData.performanceStats.totalExceptions.toFixed(0)}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Total Exceptions</Text>
                                 </View>
                             </View>
                         </View>
@@ -305,9 +304,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ visible, userId, on
                                             {evaluation.meetingTitle}
                                         </Text>
                                         <View style={styles.attendanceIssues}>
-                                            {!evaluation.attendance && (
+                                            {(!evaluation.attendance && !evaluation.hasException) && (
                                                 <View style={[styles.issueBadge, { backgroundColor: '#E74C3C' }]}>
-                                                    <Text style={styles.issueBadgeText}>ABSENT</Text>
+                                                    <Text style={styles.issueBadgeText}>UNEXCUSED ABSENCE</Text>
+                                                </View>
+                                            )}
+                                            {(!evaluation.attendance && evaluation.hasException) && (
+                                                <View style={[styles.issueBadge, { backgroundColor: '#0aa43eff' }]}>
+                                                    <Text style={styles.issueBadgeText}>EXCUSED ABSENSE</Text>
                                                 </View>
                                             )}
                                             {evaluation.isLate && evaluation.attendance && (

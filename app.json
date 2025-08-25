@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hertsu.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,6 +38,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e556c801-6b5b-451d-970c-a362dfcc0e49"
+      }
     }
   }
 }

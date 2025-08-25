@@ -1,78 +1,61 @@
-// src/hooks/useMeetingEvaluations.ts
-import {
-    CreateEvaluationPayload,
-    EvaluationResponseDto,
-    UpdateEvaluationPayload,
-} from "@/src/types/meeting";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AxiosInstance } from "axios";
+import { useAuth } from '@/App';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CreateEvaluationPayload, EvaluationType, UpdateEvaluationPayload } from '../types/meeting';
+export const useMeetingEvaluations = (meetingId: number | undefined) => {
+    const { api } = useAuth()!;
+    
+    return useQuery({
+        queryKey: ['meeting-evaluations', meetingId],
+        queryFn: async (): Promise<EvaluationType[]> => {
+            if (!meetingId) return [];
+            const response = await api.get(`/meetings/evaluations/meeting/${meetingId}`);
+            return response.data || [];
+        },
+        enabled: !!meetingId,
+        staleTime: 5 * 60 * 1000,
+    });
+};
 
-const getUid = (e: any) =>
-  e?.user?.id ?? e?.user?.userId ?? e?.userId ?? null;
+export const useCreateEvaluation = () => {
+    const { api } = useAuth()!;
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: async (data: CreateEvaluationPayload) => {
+            const response = await api.post('/meetings/evaluations', data);
+            return response.data;
+        },
+        onSuccess: (newEvaluation) => {
+            queryClient.setQueryData(
+                ['meeting-evaluations', newEvaluation.meetingId],
+                (old: EvaluationType[] = []) => {
+                    const filtered = old.filter(e => e.user.userId !== newEvaluation.user.userId);
+                    return [newEvaluation, ...filtered];
+                }
+            );
+        },
+    });
+};
 
-export function useMeetingEvaluations(api: AxiosInstance | null, meetingId: number | null) {
-  const qc = useQueryClient();
-
-  const list = useQuery<EvaluationResponseDto[]>({
-    queryKey: ["meetings", meetingId, "evaluations"],
-    enabled: !!api && !!meetingId,
-    queryFn: async () => {
-      const res = await api!.get<EvaluationResponseDto[]>(`/meetings/evaluations/meeting/${meetingId}`);
-      return res.data ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-
-  // Create evaluation
-  const create = useMutation({
-    mutationFn: async (payload: CreateEvaluationPayload) => {
-      const res = await api!.post<EvaluationResponseDto>(`/meetings/evaluations`, payload);
-      return res.data;
-    },
-    onSuccess: (created) => {
-      qc.setQueryData(
-        ["meetings", created.meetingId, "evaluations"],
-        (old: EvaluationResponseDto[] = []) => {
-          const cUid = getUid(created);
-          const filtered = old.filter((e) => getUid(e) !== cUid);
-          return [created, ...filtered];
-        }
-      );
-    },
-  });
-
-  // Update evaluation
-  const update = useMutation({
-    mutationFn: async (args: { evaluationId: number; meetingId: number; body: UpdateEvaluationPayload }) => {
-      const { evaluationId, body } = args;
-      const res = await api!.put<EvaluationResponseDto>(`/meetings/evaluations/${evaluationId}`, body);
-      return res.data;
-    },
-    onSuccess: (updated, { meetingId }) => {
-      qc.setQueryData(
-        ["meetings", meetingId, "evaluations"],
-        (old: EvaluationResponseDto[] = []) =>
-          old.map((e) => (e.evaluationId === updated.evaluationId ? updated : e))
-      );
-    },
-  });
-
-  // Delete evaluation
-  const remove = useMutation({
-    mutationFn: async (args: { meetingId: number; evaluationId: number }) => {
-      await api!.delete(`/meetings/evaluations/${args.evaluationId}`);
-      return args;
-    },
-    onSuccess: ({ evaluationId, meetingId }) => {
-      qc.setQueryData(
-        ["meetings", meetingId, "evaluations"],
-        (old: EvaluationResponseDto[] = []) => old.filter((e) => e.evaluationId !== evaluationId)
-      );
-    },
-  });
-
-  return { ...list, create, update, remove };
-}
+export const useUpdateEvaluation = () => {
+    const { api } = useAuth()!;
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: async ({ evaluationId, meetingId, data }: {
+            evaluationId: number;
+            meetingId: number;
+            data: UpdateEvaluationPayload;
+        }) => {
+            const response = await api.put(`/meetings/evaluations/${evaluationId}`, data);
+            return { ...response.data, meetingId };
+        },
+        onSuccess: (updatedEvaluation) => {
+            queryClient.setQueryData(
+                ['meeting-evaluations', updatedEvaluation.meetingId],
+                (old: EvaluationType[] = []) =>
+                    old.map(e => e.evaluationId === updatedEvaluation.evaluationId ? updatedEvaluation : e)
+            );
+        },
+    });
+};

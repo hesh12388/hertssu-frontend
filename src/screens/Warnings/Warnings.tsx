@@ -344,9 +344,6 @@ const Warnings = () => {
                 <CreateWarningModal 
                     visible={isCreateModalVisible}
                     onClose={() => setIsCreateModalVisible(false)} 
-                    onUpdate={() => {      
-                        refetch();
-                    }}
                 />
             )}
         </SafeAreaView>

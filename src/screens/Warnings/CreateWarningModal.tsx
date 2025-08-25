@@ -8,10 +8,9 @@ import { UserType } from '../../types/User';
 import { useUsers } from '@/src/hooks/useUsers';
 import { useCreateWarning } from '@/src/hooks/useWarnings';
 import { WarningRequest } from '../../types/Warning';
-const CreateWarningModal = ({ visible, onClose, onUpdate }: {
+const CreateWarningModal = ({ visible, onClose}: {
     visible: boolean;
     onClose: () => void;
-    onUpdate: () => void;
 }) => {
     
     const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
@@ -130,9 +129,6 @@ const CreateWarningModal = ({ visible, onClose, onUpdate }: {
                     setTimeout(() => {
                         setShowStatus(false);
                     }, 3000);
-                },
-                onSettled: () => {
-
                 }
             });
     };
