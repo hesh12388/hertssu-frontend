@@ -48,7 +48,7 @@
     },
     "owner": "hesh12366",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/e556c801-6b5b-451d-970c-a362dfcc0e49"
