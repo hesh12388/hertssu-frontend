@@ -73,14 +73,17 @@ const TeamSearch = () => {
 
     const getRoleColor = (role: string) => {
         const colors: { [key: string]: string } = {
-            'PRESIDENT': '#E74C3C',
-            'VICE_PRESIDENT': '#E67E22',
-            'SECRETARY': '#3498DB',
-            'TREASURER': '#27AE60',
-            'COMMITTEE_HEAD': '#9B59B6',
-            'MEMBER': '#95A5A6'
+            'PRESIDENT': '#9B59B6',
+            'VICE_PRESIDENT': '#8E44AD',
+            'EXECUTIVE_OFFICER': '#3498DB',
+            'CHAIRPERSON': '#27AE60',
+            'ASSOCIATE_CHAIRPERSON': '#F39C12',
+            'LEADER': '#2ECC71',
+            'ASSOCIATE_LEADER': '#F1C40F',
+            'OFFICER': '#E74C3C',
+            'MEMBER': '#95A5A6',
         };
-        return colors[role] || '#95A5A6';
+        return colors[role.toUpperCase()] || '#95A5A6';
     };
 
     const renderUserItem = ({ item }: { item: AssignableUserType }) => {

@@ -1,3 +1,4 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import { authConfig } from './config';
 
@@ -7,17 +8,14 @@ export const loginWithMicrosoft = async () => {
   try {
     
     // Create redirect URI
-    const redirectUri = AuthSession.makeRedirectUri({
-      scheme: authConfig.redirectUri,
-      path: 'redirect'
-    });
+    const redirectUri = authConfig.redirectUri;
 
     console.log('Using redirect URI:', redirectUri);
 
     
     // Create the auth request
     const request = new AuthSession.AuthRequest({
-      clientId: authConfig.clientId,
+      clientId: authConfig.clientId!,
       scopes: SCOPES,
       responseType: AuthSession.ResponseType.Code,
       redirectUri: redirectUri,
@@ -39,7 +37,7 @@ export const loginWithMicrosoft = async () => {
       
       const tokens = await AuthSession.exchangeCodeAsync(
         {
-          clientId: authConfig.clientId,
+          clientId: authConfig.clientId!,
           scopes: SCOPES,
           code: result.params.code,
           redirectUri: redirectUri,
@@ -57,6 +55,26 @@ export const loginWithMicrosoft = async () => {
     }
   } catch (error) {
     console.error('Microsoft auth error:', error);
+    return null;
+  }
+};
+
+
+export const loginWithApple = async () => {
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    return credential;
+  } catch (error: any) {
+    if (error.code === 'ERR_CANCELED') {
+      return null;
+    }
+    console.error('Apple auth error:', error);
     return null;
   }
 };

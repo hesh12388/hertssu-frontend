@@ -130,6 +130,13 @@ const CreateMeetingModal = ({ visible, onClose }: {
         return date;
     };
 
+    const isToday = (date:string) => {
+        const today = new Date();
+        const selectedDate = new Date(date);
+        
+        return selectedDate.toDateString() === today.toDateString();
+    };
+
     return (
         <Modal
             visible={visible}
@@ -286,7 +293,9 @@ const CreateMeetingModal = ({ visible, onClose }: {
                                 >
                                     <DateTimePicker
                                         value={createTimeDate(formData.startTime)}
-                                        minimumDate={new Date()}
+                                        minimumDate={
+                                            isToday(formData.date) ? new Date() : undefined
+                                        }
                                         style= {{marginLeft:-10}}
                                         mode="time"
                                         is24Hour={true}

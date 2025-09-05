@@ -1,0 +1,45 @@
+{
+  "cli": {
+    "version": ">= 16.17.4",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "staging": {
+      "autoIncrement": true,
+      "channel": "staging",
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API": "https://dt07lrrf2m.execute-api.eu-north-1.amazonaws.com",
+        "EXPO_PUBLIC_MS_CLIENT_ID": "15c0a23f-2d95-4678-b0fa-42603b3e2c45"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API": "https://dt07lrrf2m.execute-api.eu-north-1.amazonaws.com",
+        "EXPO_PUBLIC_MS_CLIENT_ID": "15c0a23f-2d95-4678-b0fa-42603b3e2c45"
+      }
+    }
+  },
+  "submit": {
+    "staging": {
+      "ios": {
+        "appleId": "niveenaskar2000@outlook.com",
+        "ascAppId": "6751721650",
+        "appleTeamId": "75ZUH25F9F"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleId": "niveenaskar2000@outlook.com",
+        "ascAppId": "6751721650",
+        "appleTeamId": "75ZUH25F9F"
+      }
+    }
+  }
+}

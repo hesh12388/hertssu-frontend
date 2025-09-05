@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/App';
-import { loginWithMicrosoft } from '../utils/msAuth';
+import { loginWithApple, loginWithMicrosoft } from '../utils/oAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -45,19 +45,19 @@ const Login = () => {
         await auth?.login(data.token, data.refreshToken);
       }
       else{
-        Alert.alert('Login Failed', data.message || 'An error occurred');
+        Alert.alert('Login Failed', 'Incorrect Account Credentials');
       }
     }
     catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use the correct credentials.');
     }
     finally {
       setIsLoading(false);
     }
   }
 
-  const handleOAuth = async () => {
+  const handleMicrosoftLogin = async () => {
     setIsLoading(true);
     try {
       // Get Microsoft tokens
@@ -76,6 +76,7 @@ const Login = () => {
         },
         body: JSON.stringify({
           id_token: microsoftTokens.idToken,
+          provider: 'microsoft',
         }),
       });
 
@@ -84,11 +85,48 @@ const Login = () => {
       if (response.ok) {
         await auth?.login(data.token, data.refreshToken);
       } else {
-        Alert.alert('Login Failed', data.message || 'An error occurred');
+        Alert.alert('Login Failed', 'Incorrect Account Credentials');
       }
     } catch (error) {
       console.error('OAuth login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use your university email for sign-In.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setIsLoading(true);
+    try {
+      const credential = await loginWithApple();
+
+      if (!credential) {
+        Alert.alert('Login Failed', 'Apple authentication was cancelled or failed');
+        return;
+      }
+
+      // Send Apple credential
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/oauth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: credential.identityToken,
+          provider: 'apple',
+        }),
+      });
+      
+      const data = await response.json();
+
+      if (response.ok) {
+        await auth?.login(data.token, data.refreshToken);
+      } else {
+        Alert.alert('Login Failed', 'Incorrect Account Credentials');
+      }
+    } catch (error) {
+      console.error('Apple login error:', error);
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use your university email for sign-In.');
     } finally {
       setIsLoading(false);
     }
@@ -139,8 +177,6 @@ const Login = () => {
               placeholderTextColor="#999"
             />
 
-            <Text style={styles.forgotPassword}>Forgot password?</Text>
-
             <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled]} onPress={handleLogin} disabled={isLoading}>
               {isLoading ? (
                 <ActivityIndicator color="white" />
@@ -158,9 +194,13 @@ const Login = () => {
           </View>
 
         
-          <TouchableOpacity style={styles.authButton} onPress={handleOAuth} disabled={isLoading}>
+          <TouchableOpacity style={styles.authButton} onPress={handleMicrosoftLogin} disabled={isLoading}>
             <Image source={require('../../assets/images/outlook_icon.png')} style={styles.authLogo} />
                 <Text style={styles.buttonText}>Continue with Outlook</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.authButton} onPress={handleAppleLogin} disabled={isLoading}>
+            <Image source={require('../../assets/images/apple_icon.png')} style={styles.authLogo} />
+                <Text style={styles.buttonText}>Continue with Apple</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -231,6 +271,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   button: {
+    marginTop: 15,
     width: '100%',
     backgroundColor: '#E9435E',
     borderRadius: 12,
