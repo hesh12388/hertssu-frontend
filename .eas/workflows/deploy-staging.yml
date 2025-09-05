@@ -41,3 +41,4 @@ jobs:
     params:
       branch: staging
       platform: ios
+      environment: staging
