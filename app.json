@@ -10,9 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.hertssu.gaf.app",
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
+      },
       "infoPlist": {
-      "ITSAppUsesNonExemptEncryption": false
-    }
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
