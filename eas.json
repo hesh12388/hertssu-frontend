@@ -26,20 +26,6 @@
       }
     }
   },
-  "update": {
-    "staging": {
-      "env": {
-        "EXPO_PUBLIC_API": "https://dt07lrrf2m.execute-api.eu-north-1.amazonaws.com",
-        "EXPO_PUBLIC_MS_CLIENT_ID": "15c0a23f-2d95-4678-b0fa-42603b3e2c45"
-      }
-    },
-    "production": {
-      "env": {
-        "EXPO_PUBLIC_API": "https://dt07lrrf2m.execute-api.eu-north-1.amazonaws.com",
-        "EXPO_PUBLIC_MS_CLIENT_ID": "15c0a23f-2d95-4678-b0fa-42603b3e2c45"
-      }
-    }
-  },
   "submit": {
     "staging": {
       "ios": {
