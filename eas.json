@@ -9,6 +9,7 @@
       "distribution": "internal"
     },
     "staging": {
+      "autoIncrement": true,
       "channel": "staging",
       "distribution": "store",
       "env": {
@@ -17,6 +18,7 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_API": "https://dt07lrrf2m.execute-api.eu-north-1.amazonaws.com",

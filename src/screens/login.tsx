@@ -50,7 +50,7 @@ const Login = () => {
     }
     catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use the correct credentials.');
     }
     finally {
       setIsLoading(false);
@@ -89,7 +89,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('OAuth login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use your university email for sign-In.');
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +126,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Apple login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert('Login Failed', 'An unexpected error occurred. Make sure to use your university email for sign-In.');
     } finally {
       setIsLoading(false);
     }
@@ -176,8 +176,6 @@ const Login = () => {
               editable={!isLoading}
               placeholderTextColor="#999"
             />
-
-            <Text style={styles.forgotPassword}>Forgot password?</Text>
 
             <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled]} onPress={handleLogin} disabled={isLoading}>
               {isLoading ? (
@@ -273,6 +271,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   button: {
+    marginTop: 15,
     width: '100%',
     backgroundColor: '#E9435E',
     borderRadius: 12,
