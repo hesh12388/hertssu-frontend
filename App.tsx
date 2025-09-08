@@ -74,8 +74,8 @@ const App = () => {
         }
 
         const data = await response.json();
-        setUserToken(data.accessToken);
-        decodeToken(data.accessToken);
+        setUserToken(data.token);
+        decodeToken(data.token);
         await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
         return data.accessToken;   
     } catch (error) {
@@ -101,8 +101,11 @@ const App = () => {
     const restoreSession = async () => {
       try {
         const rt = await SecureStore.getItemAsync(REFRESH_KEY);
-        if (!rt) return;
-
+        if (!rt)
+        {
+          setIsLoading(false);
+          return;
+        } 
         const res = await fetch(`${process.env.EXPO_PUBLIC_API}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -115,8 +118,8 @@ const App = () => {
         }
 
         const data = await res.json();
-        setUserToken(data.accessToken);
-        decodeToken(data.accessToken);
+        setUserToken(data.token);
+        decodeToken(data.token);
         await SecureStore.setItemAsync(REFRESH_KEY, data.refreshToken);
       } catch (e) {
 
