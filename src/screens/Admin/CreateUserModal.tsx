@@ -144,7 +144,7 @@ const CreateUserModal = ({ visible, onClose }: {
         return users.find(user => user.id.toString() === formData.supervisorId);
     };
     const ROLE_OPTIONS = [
-        { label: 'Chairperson', value: 'CHAIR_PERSON' },
+        { label: 'Chairperson', value: 'CHAIRPERSON' },
         { label: 'Associate Chairperson', value: 'ASSOCIATE_CHAIRPERSON' },
         { label: 'Leader', value: 'LEADER' },
         { label: 'Associate Leader', value: 'ASSOCIATE_LEADER' },
