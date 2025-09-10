@@ -191,7 +191,7 @@ const Meetings = () => {
     }, [currentQuery.hasNextPage, currentQuery.isFetchingNextPage, currentQuery.fetchNextPage]);
 
     const renderMeetingItem = ({ item }: { item: MeetingType }) => {
-        const isUpcoming = isMeetingUpcoming(item.date, item.startTime);
+        const isUpcoming = isMeetingUpcoming(item.date, item.endTime);
         const canDelete = isUpcoming && (item.createdBy.userId === user?.id);
         const showJoinButton = isUpcoming && item.joinUrl && item.joinUrl.trim() !== '';
         const showLogButton = !isUpcoming;
